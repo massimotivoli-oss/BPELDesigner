@@ -8,7 +8,7 @@ case "$(uname -s)" in
 esac
 url="https://archive.eclipse.org/technology/epp/downloads/release/photon/R/$package"
 if [[ ! -x "$launcher" ]]; then
- curl -fL --retry 3 "$url" -o "$ROOT/.cache/$package.part"
+ curl -fL --retry 3 --connect-timeout 30 --max-time 900 "$url" -o "$ROOT/.cache/$package.part"
  # Linux checksum published by Eclipse: https://www.eclipse.org/downloads/packages/file/51981
  if [[ "$(uname -s)" == Linux ]]; then
   python3 - "$ROOT/.cache/$package.part" <<'CHECK'
@@ -20,5 +20,8 @@ CHECK
  mv "$ROOT/.cache/$package.part" "$ROOT/.cache/$package"
  tar xzf "$ROOT/.cache/$package" -C "$ROOT/.ide"
 fi
-"$launcher" -nosplash -vm "$JAVA_HOME/bin/java"  -application org.eclipse.equinox.p2.director  -repository https://download.eclipse.org/releases/photon/201806271001/  -installIU org.eclipse.bpel.feature.feature.group,org.eclipse.bpel.apache.ode.runtime.feature.feature.group  -acceptLicense
+# The Photon p2 director does not implement -acceptLicense.
+"$launcher" -nosplash -consoleLog -vm "$JAVA_HOME/bin/java" -application org.eclipse.equinox.p2.director \
+ -repository https://download.eclipse.org/releases/photon/201806271001/ \
+ -installIU org.eclipse.bpel.feature.feature.group/1.1.2.Final-v20180514-2000,org.eclipse.bpel.apache.ode.runtime.feature.feature.group/1.1.2.Final-v20180514-2000
 echo 'Eclipse installed. Run scripts/eclipse.sh.'

@@ -1,0 +1,9 @@
+.git
+.cache
+.runtime
+.ide
+workspace
+artifacts
+**/target
+**/__pycache__
+.DS_Store
