@@ -1,0 +1,9 @@
+<definitions xmlns="http://schemas.xmlsoap.org/wsdl/" xmlns:tns="urn:hello" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/" xmlns:plnk="http://docs.oasis-open.org/wsbpel/2.0/plnktype" targetNamespace="urn:hello">
+<types><xs:schema targetNamespace="urn:hello"><xs:element name="hello"><xs:complexType><xs:sequence><xs:element name="name" type="xs:string" minOccurs="0"/></xs:sequence></xs:complexType></xs:element><xs:element name="helloResponse"><xs:complexType><xs:sequence><xs:element name="return" type="xs:string" minOccurs="0"/></xs:sequence></xs:complexType></xs:element></xs:schema></types>
+<message name="hello"><part name="parameters" element="tns:hello"/></message><message name="helloResponse"><part name="parameters" element="tns:helloResponse"/></message>
+<portType name="HelloPortType"><operation name="hello"><input message="tns:hello"/><output message="tns:helloResponse"/></operation></portType>
+<binding name="HelloBinding" type="tns:HelloPortType"><soap:binding style="document" transport="http://schemas.xmlsoap.org/soap/http"/><operation name="hello"><soap:operation soapAction=""/><input><soap:body use="literal"/></input><output><soap:body use="literal"/></output></operation></binding>
+<service name="HelloService"><port name="HelloPort" binding="tns:HelloBinding"><soap:address location="http://localhost:8081/participants/hello"/></port></service>
+<service name="OrchestratorService"><port name="OrchestratorPort" binding="tns:HelloBinding"><soap:address location="http://localhost:8080/ode/processes/Orchestrator"/></port></service>
+<plnk:partnerLinkType name="HelloLink"><plnk:role name="provider" portType="tns:HelloPortType"/></plnk:partnerLinkType>
+</definitions>

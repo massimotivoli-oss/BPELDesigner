@@ -1,0 +1,21 @@
+name: BPEL integration
+on: [push, pull_request, workflow_dispatch]
+jobs:
+  orchestration:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '8'
+      - run: python3 scripts/check.py
+      - run: bash scripts/setup.sh
+      - run: bash scripts/start.sh && bash scripts/deploy.sh
+      - run: bash scripts/smoke.sh
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tomcat-logs
+          path: .runtime/*/logs/
