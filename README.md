@@ -79,7 +79,7 @@ The example receives a name, invokes the participant in the other container, and
 3. Edit and save: `/project` maps to the local repository directory.
 4. For Java, choose **File → Import → Maven → Existing Maven Projects**, with `/project/services` as the root.
 
-For new processes, choose **File → New → Other → BPEL → BPEL Project**, under `/project/processes`, and include `deploy.xml`, BPEL, WSDL, and any XSD files. The example is imported as a resource project and explicitly opened with the BPEL editor; it does not declare a nonexistent project nature. Scripts handle deployment rather than the Eclipse server adapter. See the [tutorial](docs/TUTORIAL.md) for a complete second process.
+For new processes, choose **File → New → Other → BPEL 2.0 → BPEL Project**, under `/project/processes`. Keep the default `bpelContent` folder for BPEL, WSDL, and any XSD files, and place `deploy.xml` in the project root for discovery by the Docker deployment script. The example is imported as a resource project and explicitly opened with the BPEL editor; it does not declare a nonexistent project nature. Scripts handle deployment rather than the Eclipse server adapter. See the [tutorial](docs/TUTORIAL.md) for a complete second process.
 
 On Linux, the desktop uses UID/GID 1000: the mounted directory must be writable by that user. The container does not change ownership of host sources.
 

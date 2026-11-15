@@ -208,19 +208,35 @@ Create a process as an independent project, starting from its contracts. This wo
 
 For this exercise, GreetingProcess accepts a greeting request and invokes the GreetingService developed in section 2. The client-facing operation and participant operation deliberately share the same request/response message types, but have separate port types and partner-link types. That lets us focus on project creation and deployment before introducing data transformations.
 
-### Create an empty project in Eclipse
+### Create a BPEL project in Eclipse
 
-1. Choose **File → New → Project → General → Project**.
-2. Name the project `GreetingProcess`, clear **Use default location**, and enter `/project/processes/GreetingProcess` as its location. Finish the wizard.
-3. Inside that project, use **File → New → File** to create `Greeting.wsdl`, `GreetingProcess.bpel`, and `deploy.xml`. Paste the complete contents given below and save each file. Use **Open With → XML Editor** if you need to edit a file's source rather than its graphical view.
+1. Choose **File → New → Other → BPEL 2.0 → BPEL Project**. The same wizard is available from **File → New → Project → BPEL 2.0 → BPEL Project**.
+2. Name the project `GreetingProcess`, clear **Use default location**, and enter `/project/processes/GreetingProcess` as its location. Keep the BPEL 2.0 project configuration. Leave the target runtime unset if no Eclipse server runtime is configured: the servers used here run in Docker.
+3. Click **Next** to review the BPEL facet settings and keep **Content Folder** set to `bpelContent`. Finish the wizard and switch to the BPEL perspective if Eclipse offers it.
+4. Select `bpelContent` and use **File → New → File** to create `Greeting.wsdl` and `GreetingProcess.bpel`. Paste the complete contents given below and save each file. Use the XML editor's Source view or the BPEL editor's Source tab when entering XML.
+5. Select the **project root** and use **File → New → File** to create `deploy.xml`, with the contents below. Keep this descriptor in the root because the Docker deployment script uses its presence there to recognize a deployment unit.
 
-Eclipse creates `.project` for you. Keep the files in the project root for this exercise. The patched ODE descriptor editor supports this plain resource project; no web-project nature or Eclipse server adapter is needed. Keep HelloProcess in place because the environment's startup checks and existing regression tests use it.
+Use the BPEL Project wizard so Eclipse configures the BPEL 2.0 facet, content-folder mapping, and BPEL validation builder. You can inspect the facet under **Project → Properties → Project Facets**. Keep the generated `.project` and `.settings` metadata; do not replace them with the metadata from HelloProcess.
+
+The exercise layout is:
+
+```text
+processes/GreetingProcess/
+├── .project
+├── .settings/
+├── deploy.xml
+└── bpelContent/
+    ├── Greeting.wsdl
+    └── GreetingProcess.bpel
+```
+
+The BPEL import `location="Greeting.wsdl"` stays valid because BPEL and WSDL are in the same folder. The deployment script copies their nested paths along with the root descriptor; ODE resolves the descriptor's service and process QNames from the deployment unit's contracts. The descriptor editor uses the facet's `bpelContent` mapping to discover those contracts. Scripts still handle server deployment, so an Eclipse server adapter is unnecessary. Keep HelloProcess in place because the environment's startup checks and existing regression tests use it.
 
 ### Define the WSDL contracts
 
 Before writing BPEL, inspect the participant's generated WSDL at `http://localhost:8081/participants/greeting?wsdl` from your computer. Check its imported schema too. Record the operation name, port type, message elements, namespaces, and SOAP binding. The participant from section 2 accepts `{urn:greeting}greeting` with an unqualified `name` child and returns `{urn:greeting}greetingResponse` with an unqualified `return` child.
 
-Create `Greeting.wsdl` with these contents:
+Create `bpelContent/Greeting.wsdl` with these contents:
 
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
@@ -324,7 +340,7 @@ Here, the participant and public process definitions are kept in one WSDL to mak
 
 ### Define the executable BPEL process
 
-Create `GreetingProcess.bpel` with these contents:
+Create `bpelContent/GreetingProcess.bpel` with these contents:
 
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
@@ -389,7 +405,7 @@ To build a different process, first define its public and participant contracts.
 
 ### Define the ODE deployment descriptor
 
-Create `deploy.xml` with these contents:
+Create `deploy.xml` in the project root with these contents:
 
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
@@ -537,7 +553,7 @@ Once the exercise works, replace the greeting operation with your own domain ser
 - Update `deploy.xml` for each provided or invoked partner link. Include all imported WSDL/XSD files in the deployment directory and use resolvable relative paths.
 - Use distinct process QNames, service QNames, and endpoint paths for independent processes. A different folder name alone does not prevent service collisions.
 
-For a project created through **File → New → Other → BPEL → BPEL Project**, select a location below `/project/processes`. Save its deployable files there and use the same script deployment workflow. The Eclipse adapter is not needed.
+For each new process, use **File → New → Other → BPEL 2.0 → BPEL Project**, select a location below `/project/processes`, and keep the facet's content folder for BPEL/WSDL/XSD files. Keep `deploy.xml` in the project root so the Docker script discovers the deployment unit, as shown in section 3. The Eclipse server adapter is not needed.
 
 ### Everyday edit/build/deploy cycle
 
