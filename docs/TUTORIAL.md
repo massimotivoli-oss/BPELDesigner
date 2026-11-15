@@ -127,6 +127,81 @@ curl --fail-with-body --silent --show-error \
 
 Expect a SOAP response containing `<return>Hello, Ada!</return>`; XML prefixes may vary. The wrapper `g:greeting` belongs to `urn:greeting`, while the child `name` is unqualified. HTTP 200 alone is insufficient: inspect the returned value and check for SOAP faults.
 
+### Create and run a Java client in Eclipse
+
+You can also test the service with a Java `main` program and read its response in the Eclipse Console. Create a separate Java project for clients, so test programs stay outside the participant WAR.
+
+#### Create the client project
+
+1. In the browser-based Eclipse desktop, choose **File → New → Java Project** (or **File → New → Other → Java → Java Project**).
+2. Enter `GreetingClients` as the project name, clear **Use default location**, and set the location to `/project/clients/greeting`.
+3. Select the installed **JavaSE-1.8 / JDK 8** execution environment and keep separate source/output folders, `src` and `bin`. Click **Finish**. If Eclipse offers to switch to the Java perspective, accept.
+
+The Java 8 JDK includes the JAX-WS client APIs and `wsimport`; this plain Java client project needs no additional Maven dependencies. These instructions target the pinned JDK 8 environment; newer JDKs do not necessarily include those tools or APIs.
+
+#### Generate Java types from the service WSDL
+
+After deploying GreetingService, run this command **from your host terminal**, in the repository root:
+
+```bash
+docker compose exec -T --user developer ide bash -c '
+  cd /project/clients/greeting &&
+  wsimport -keep -Xnocompile -s src \
+    -p it.bpeldesigner.client.generated \
+    http://participants:8081/participants/greeting?wsdl
+'
+```
+
+The command executes the JDK tool **inside the IDE container**. `-s src` writes Java sources into the client project, `-p` selects their package, and `-Xnocompile` leaves compilation to Eclipse. The generated code includes `GreetingService`, the `GreetingPortType` service interface, and request/response types. Do not edit generated sources; regenerate them when the service contract changes.
+
+In Eclipse, select `GreetingClients` and press **F5 / Refresh**. With **Project → Build Automatically** enabled, Eclipse compiles the generated files. Check the Problems view if it reports errors; confirm that the project's JRE System Library is JavaSE-1.8.
+
+#### Write the client program
+
+Under `GreetingClients/src`, create package `it.bpeldesigner.client`, then class `GreetingServiceClient` with a `public static void main(String[] args)` method. Paste:
+
+```java
+package it.bpeldesigner.client;
+
+import java.net.URL;
+import javax.xml.ws.BindingProvider;
+import it.bpeldesigner.client.generated.GreetingPortType;
+import it.bpeldesigner.client.generated.GreetingService;
+
+public class GreetingServiceClient {
+    public static void main(String[] args) throws Exception {
+        String endpoint = "http://participants:8081/participants/greeting";
+        GreetingService service = new GreetingService(new URL(endpoint + "?wsdl"));
+        GreetingPortType port = service.getGreetingPort();
+
+        // Use the endpoint reachable from the IDE container, regardless of
+        // the address advertised in the downloaded WSDL.
+        ((BindingProvider) port).getRequestContext().put(
+            BindingProvider.ENDPOINT_ADDRESS_PROPERTY, endpoint);
+
+        String response = port.greeting("Ada");
+        System.out.println("Service response: " + response);
+        if (!"Hello, Ada!".equals(response)) {
+            throw new AssertionError("Unexpected service response: " + response);
+        }
+    }
+}
+```
+
+`wsimport` converts the WSDL operation into the Java method `greeting(String)`. The client calls the SOAP endpoint through that generated interface and receives the operation's return value as a Java `String`; it does not need to build or parse XML manually. The explicit endpoint override matters because a WSDL can advertise a `localhost` address that is unreachable from a different container.
+
+#### Run it and inspect standard output
+
+Right-click `GreetingServiceClient.java` → **Run As → Java Application**. Open **Window → Show View → Console** if needed, and select this Java application's console. Expect:
+
+```text
+Service response: Hello, Ada!
+```
+
+`System.out.println` writes to the Eclipse Console for the launched application. SOAP faults or connection failures appear as exceptions in the same console; an unexpected return value triggers the assertion. This client runs in the IDE container, so use `participants:8081`, not `localhost:8081`. No server redeploy is needed after changing just the client: save and run it again.
+
+If you later run the client on your host with a compatible Java setup, change `endpoint` to `http://localhost:8081/participants/greeting`; both the WSDL download and the SOAP invocation must use an address reachable from the machine running the client.
+
 ## 3. Create a new BPEL process
 
 ### Create a separate deployment unit
@@ -265,6 +340,63 @@ bash scripts/docker.sh test
 
 The final command checks the original HelloProcess and editor as a regression check. It does not test GreetingProcess. Before submitting your work, also test your new endpoints with an empty name, Unicode text, and XML-escaped characters, and add your own assertions to a versioned test script. The existing `docker/integration.py` is a model for SOAP assertions and concurrent calls. To run new checks in CI, include them in the test image/workflow; a local request file alone does not add CI coverage.
 
+### Invoke the orchestrator from a Java client in Eclipse
+
+After deploying GreetingProcess, use the same `GreetingClients` project, but generate a **second set of client types from ODE's published WSDL**. Although the request/response XML matches the participant contract, ODE's published WSDL in this environment names the service `GreetingOrchestrator` and the port type `GreetingOrchestratorPortType`. These differ from the service and port-type names in the source `Greeting.wsdl`. Generate against the running endpoint rather than assuming the source names survive publication unchanged.
+
+Run from your host terminal, in the repository root:
+
+```bash
+docker compose exec -T --user developer ide bash -c '
+  cd /project/clients/greeting &&
+  wsimport -keep -Xnocompile -s src \
+    -p it.bpeldesigner.client.orchestrator.generated \
+    http://ode:8080/ode/processes/GreetingOrchestrator?wsdl
+'
+```
+
+The separate package keeps the orchestrator's generated types apart from the participant's. In Eclipse, select `GreetingClients` → **Refresh** and let it build. The new package contains the `GreetingOrchestrator` service class and `GreetingOrchestratorPortType` interface.
+
+Create `OrchestratorClient.java` in the `it.bpeldesigner.client` package:
+
+```java
+package it.bpeldesigner.client;
+
+import java.net.URL;
+import javax.xml.ws.BindingProvider;
+import it.bpeldesigner.client.orchestrator.generated.GreetingOrchestrator;
+import it.bpeldesigner.client.orchestrator.generated.GreetingOrchestratorPortType;
+
+public class OrchestratorClient {
+    public static void main(String[] args) throws Exception {
+        String endpoint = "http://ode:8080/ode/processes/GreetingOrchestrator";
+        GreetingOrchestrator service = new GreetingOrchestrator(
+            new URL(endpoint + "?wsdl"));
+        GreetingOrchestratorPortType port = service.getGreetingOrchestratorPort();
+        ((BindingProvider) port).getRequestContext().put(
+            BindingProvider.ENDPOINT_ADDRESS_PROPERTY, endpoint);
+
+        String response = port.greeting("Ada");
+        System.out.println("Orchestrator response: " + response);
+        if (!"Hello, Ada!".equals(response)) {
+            throw new AssertionError("Unexpected orchestrator response: " + response);
+        }
+    }
+}
+```
+
+Here, both the service class and port interface are generated from ODE's WSDL. Their contract namespace is `urn:greeting`, not the BPEL process namespace `urn:greeting-orchestrator`. The Java client downloads ODE's published WSDL and explicitly sets the SOAP destination to ODE; the override also avoids relying on the `localhost` address that ODE may advertise in its WSDL.
+
+Right-click `OrchestratorClient.java` → **Run As → Java Application**. In that application's Eclipse Console, expect:
+
+```text
+Orchestrator response: Hello, Ada!
+```
+
+This is the final response from the synchronous orchestration: the Java client invokes ODE, ODE invokes GreetingService in the participant container, and the BPEL Reply sends the result back to Java. No extra polling is needed for this request/response process. Compare both Java clients to verify direct and orchestrated access independently.
+
+The client runs inside the IDE container, so its endpoint uses `ode:8080`. To run it on your host, change the endpoint to `http://localhost:8080/ode/processes/GreetingOrchestrator`. If a call fails, inspect both the Eclipse Console exception and `docker compose logs --tail=200 ode participants`. Test the endpoint WSDL from the IDE container when diagnosing connectivity; a successful host-browser request checks a different network path.
+
 ## 5. Develop your own contracts
 
 Once the exercise works, replace the greeting operation with your own domain service. Start by agreeing on request/response XML with your teammates.
@@ -293,6 +425,8 @@ Save files before deploying. Refresh Eclipse after terminal edits. Source files 
 | Symptom | Check and action |
 |---|---|
 | New Java endpoint returns 404 | Verify the endpoint in `sun-jaxws.xml`, servlet mapping in `web.xml`, `/participants` context, and participant rebuild; inspect participant logs |
+| Java client cannot connect from Eclipse | Use `participants:8081` for the service or `ode:8080` for the process; override the WSDL endpoint using `BindingProvider` |
+| Generated client types are missing in Eclipse | Run `wsimport` after creating the client project, refresh it, and check the JavaSE-1.8 library and Problems view |
 | Old Java response after saving | Java sources are baked into the WAR image; rebuild/recreate `participants` |
 | Process WSDL returns 404 | Inspect ODE compilation errors; verify `deploy.xml`, process QName, service/port names, imports, and endpoint spelling; allow startup time |
 | Invoke cannot connect | Use `participants:8081` inside Docker; check the deployed WSDL copy, not just host sources |
@@ -316,6 +450,8 @@ For a completely fresh disposable lab, `docker compose down -v` removes **all** 
 
 ## 7. Submit an exercise
 
-Keep your Java sources, descriptors, process files, and tests under version control. Exclude `artifacts/`, Maven output, and workspace/database files. In your submission, state the new service and process URLs, provide a sample SOAP request and expected response, and record the tests you ran. See the [repository contribution workflow](../README.md#github-and-acceptance-criteria).
+Keep your Java sources, descriptors, process files, and tests under version control. Exclude `artifacts/`, Maven output, the client project's compiled `clients/greeting/bin/` directory, and workspace/database files. Add `clients/greeting/bin/` to `.gitignore` when you create the client project. In your submission, state the new service and process URLs, provide a sample SOAP request and expected response, and record the tests you ran. See the [repository contribution workflow](../README.md#github-and-acceptance-criteria).
 
 For background, use the [Metro 2.3.x documentation linked from the official Metro site](https://eclipse-ee4j.github.io/metro-jax-ws/) and [Apache ODE WAR deployment documentation](https://ode.apache.org/war-deployment.html), together with the pinned versions and working examples in this repository.
+
+For Java client generation options and endpoint configuration, see the official JDK 8 [`wsimport` documentation](https://docs.oracle.com/javase/8/docs/technotes/tools/unix/wsimport.html) and [`BindingProvider` API](https://docs.oracle.com/javase/8/docs/api/javax/xml/ws/BindingProvider.html).
