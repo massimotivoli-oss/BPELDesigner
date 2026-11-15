@@ -1,6 +1,43 @@
-<process xmlns="http://docs.oasis-open.org/wsbpel/2.0/process/executable" xmlns:tns="urn:orchestrator" xmlns:h="urn:hello" name="HelloProcess" targetNamespace="urn:orchestrator" suppressJoinFailure="yes">
-<import namespace="urn:hello" location="Hello.wsdl" importType="http://schemas.xmlsoap.org/wsdl/"/>
-<partnerLinks><partnerLink name="client" partnerLinkType="h:HelloLink" myRole="provider"/><partnerLink name="participant" partnerLinkType="h:HelloLink" partnerRole="provider"/></partnerLinks>
-<variables><variable name="request" messageType="h:hello"/><variable name="response" messageType="h:helloResponse"/></variables>
-<sequence><receive name="Receive" partnerLink="client" portType="h:HelloPortType" operation="hello" variable="request" createInstance="yes"/><invoke name="CallParticipant" partnerLink="participant" portType="h:HelloPortType" operation="hello" inputVariable="request" outputVariable="response"/><reply name="Reply" partnerLink="client" portType="h:HelloPortType" operation="hello" variable="response"/></sequence>
+<?xml version="1.0" encoding="UTF-8"?>
+<process
+    xmlns="http://docs.oasis-open.org/wsbpel/2.0/process/executable"
+    xmlns:tns="urn:orchestrator"
+    xmlns:h="urn:hello"
+    name="HelloProcess"
+    targetNamespace="urn:orchestrator"
+    suppressJoinFailure="yes">
+    <import
+        namespace="urn:hello"
+        location="Hello.wsdl"
+        importType="http://schemas.xmlsoap.org/wsdl/"/>
+    <partnerLinks>
+        <partnerLink name="client" partnerLinkType="h:HelloLink" myRole="provider"/>
+        <partnerLink name="participant" partnerLinkType="h:HelloLink" partnerRole="provider"/>
+    </partnerLinks>
+    <variables>
+        <variable name="request" messageType="h:hello"/>
+        <variable name="response" messageType="h:helloResponse"/>
+    </variables>
+    <sequence>
+        <receive
+            name="Receive"
+            partnerLink="client"
+            portType="h:HelloPortType"
+            operation="hello"
+            variable="request"
+            createInstance="yes"/>
+        <invoke
+            name="CallParticipant"
+            partnerLink="participant"
+            portType="h:HelloPortType"
+            operation="hello"
+            inputVariable="request"
+            outputVariable="response"/>
+        <reply
+            name="Reply"
+            partnerLink="client"
+            portType="h:HelloPortType"
+            operation="hello"
+            variable="response"/>
+    </sequence>
 </process>

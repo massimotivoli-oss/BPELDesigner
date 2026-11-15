@@ -24,10 +24,10 @@ if [[ -n "$(docker compose ps --status running -q ide 2>/dev/null)" ]]; then
      docker compose exec -T ide python3 /opt/tools/screenshot.py > artifacts/screenshot.log 2>&1; then
     docker compose cp ide:/tmp/eclipse-desktop.png artifacts/eclipse-desktop.png
   else
-    echo 'Screenshot non disponibile: desktop non pronto. Gli altri log sono stati raccolti.'
+    echo 'Screenshot unavailable: desktop not ready. Other logs have been collected.'
   fi
 else
-  echo 'IDE non in esecuzione: raccolta log Eclipse saltata. Consultare build.log, startup.log e compose.log.'
+  echo 'IDE is not running: skipped Eclipse logs. See build.log, startup.log and compose.log.'
 fi
 # Missing optional GUI evidence must not mask the original build/startup failure.
 exit 0

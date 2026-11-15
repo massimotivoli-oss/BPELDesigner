@@ -1,6 +1,8 @@
 """Align Photon BPEL's obsolete WSDL4J bounds with Photon's WST bundle."""
 import re
 import sys
+import subprocess
+import tempfile
 import zipfile
 from pathlib import Path
 
@@ -31,3 +33,16 @@ for path in sorted(plugins.glob('org.eclipse.bpel*_1.1.2.Final-v20180514-2000.ja
     patched += 1
 assert patched == 8, f'Unexpected BPEL distribution: patched {patched} bundles'
 print(f'Aligned WSDL4J dependency in {patched} BPEL bundles')
+
+# Use ASM already shipped with Photon; no additional download is required.
+patch_sources = Path(__file__).with_name('eclipse-patches')
+with tempfile.TemporaryDirectory(prefix='ode-editor-patch-') as directory:
+    subprocess.run([
+        'javac', '-encoding', 'UTF-8', '-cp', str(plugins / '*'), '-d', directory,
+        str(patch_sources / 'ProjectFiles.java'), str(patch_sources / 'PatchOdeDeploy.java'),
+    ], check=True)
+    subprocess.run([
+        'java', '-cp', directory + ':' + str(plugins / '*'), 'PatchOdeDeploy',
+        str(plugins / 'org.eclipse.bpel.apache.ode.deploy.ui_1.1.2.Final-v20180514-2000.jar'),
+        str(Path(directory) / 'org/eclipse/bpel/apache/ode/deploy/ui/util/ProjectFiles.class'),
+    ], check=True)

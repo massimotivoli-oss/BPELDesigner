@@ -42,6 +42,7 @@ COPY scripts/setup-eclipse.sh scripts/env.sh /opt/installer/scripts/
 RUN bash /opt/installer/scripts/setup-eclipse.sh && \
     mv /opt/installer/.ide/eclipse /opt/eclipse && rm -rf /opt/installer
 COPY docker/patch-eclipse.py /opt/tools/
+COPY docker/eclipse-patches /opt/tools/eclipse-patches
 RUN python3 /opt/tools/patch-eclipse.py /opt/eclipse
 COPY docker/eclipse-startup /tmp/eclipse-startup
 RUN mkdir -p /tmp/eclipse-startup/classes && \

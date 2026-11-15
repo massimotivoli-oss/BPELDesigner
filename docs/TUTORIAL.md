@@ -2,7 +2,7 @@
 
 This exercise adds a `GreetingService` to the participant Tomcat and a `GreetingProcess` to Apache ODE. The existing HelloProcess stays available for the built-in healthchecks and regression tests.
 
-You need a running Docker environment ([first launch](../README.md#first-launch)), a terminal in the repository root, and a text editor or the browser-based Eclipse desktop. Commands assume Bash on macOS or Linux. The process-copy command also requires host Python 3; no host Java or Maven installation is needed.
+You need a running Docker environment ([first launch](../README.md#first-launch)), a terminal in the repository root, and a text editor or the browser-based Eclipse desktop. Commands assume Bash on macOS or Linux. The optional Python response assertion requires host Python 3; no host Java or Maven installation is needed.
 
 Allow time for the first Docker build. All paths below are relative to the repository root unless they start with `/project`, which is the same checkout inside Eclipse.
 
@@ -158,7 +158,7 @@ In Eclipse, select `GreetingClients` and press **F5 / Refresh**. With **Project 
 
 #### Write the client program
 
-Under `GreetingClients/src`, create package `it.bpeldesigner.client`, then class `GreetingServiceClient` with a `public static void main(String[] args)` method. Paste:
+Under `GreetingClients/src`, use the existing parent package `it.bpeldesigner.client`, introduced by the generated `it.bpeldesigner.client.generated` package; do not recreate it. Eclipse may show only the full generated package in its flat package presentation. Choose **New → Class** on `src` and set **Package** to `it.bpeldesigner.client` and **Name** to `GreetingServiceClient` (or select the parent package if it is visible). Select the `public static void main(String[] args)` option. Paste:
 
 ```java
 package it.bpeldesigner.client;
@@ -204,89 +204,219 @@ If you later run the client on your host with a compatible Java setup, change `e
 
 ## 3. Create a new BPEL process
 
-### Create a separate deployment unit
+Create a process as an independent project, starting from its contracts. This workflow does not copy or rename HelloProcess. It also applies when the client and participant contracts differ: define both contracts, import their message types, and map data between them.
 
-For the first exercise, copy the working process and consistently rename its contract. Run the following once from the repository root; it refuses to overwrite an existing exercise directory:
+For this exercise, GreetingProcess accepts a greeting request and invokes the GreetingService developed in section 2. The client-facing operation and participant operation deliberately share the same request/response message types, but have separate port types and partner-link types. That lets us focus on project creation and deployment before introducing data transformations.
 
-```bash
-python3 - <<'PY'
-from pathlib import Path
+### Create an empty project in Eclipse
 
-source = Path('processes/HelloProcess')
-target = Path('processes/GreetingProcess')
-target.mkdir(exist_ok=False)
-files = {
-    'Hello.wsdl': 'Greeting.wsdl',
-    'HelloProcess.bpel': 'GreetingProcess.bpel',
-    'deploy.xml': 'deploy.xml',
-    '.project': '.project',
-}
-for old, new in files.items():
-    text = (source / old).read_text()
-    text = text.replace('urn:orchestrator', 'urn:greeting-orchestrator')
-    text = text.replace('Orchestrator', 'GreetingOrchestrator')
-    text = text.replace('Hello', 'Greeting').replace('hello', 'greeting')
-    (target / new).write_text(text)
-print('Created processes/GreetingProcess')
-PY
-```
+1. Choose **File → New → Project → General → Project**.
+2. Name the project `GreetingProcess`, clear **Use default location**, and enter `/project/processes/GreetingProcess` as its location. Finish the wizard.
+3. Inside that project, use **File → New → File** to create `Greeting.wsdl`, `GreetingProcess.bpel`, and `deploy.xml`. Paste the complete contents given below and save each file. Use **Open With → XML Editor** if you need to edit a file's source rather than its graphical view.
 
-The folder now contains `.project`, `Greeting.wsdl`, `GreetingProcess.bpel`, and `deploy.xml`. This particular replacement works because the example and the new service deliberately use the same request/response shape. It is not a general way to generate BPEL contracts from arbitrary Java classes.
+Eclipse creates `.project` for you. Keep the files in the project root for this exercise. The patched ODE descriptor editor supports this plain resource project; no web-project nature or Eclipse server adapter is needed. Keep HelloProcess in place because the environment's startup checks and existing regression tests use it.
 
-In Eclipse, use **File → Import → General → Existing Projects into Workspace**, root `/project/processes/GreetingProcess`, without copying the project into the workspace. Open `GreetingProcess.bpel` with the BPEL editor and inspect Receive, CallParticipant, and Reply. Refresh the project if you created files from a terminal.
+### Define the WSDL contracts
 
-### Inspect the WSDL contract
+Before writing BPEL, inspect the participant's generated WSDL at `http://localhost:8081/participants/greeting?wsdl` from your computer. Check its imported schema too. Record the operation name, port type, message elements, namespaces, and SOAP binding. The participant from section 2 accepts `{urn:greeting}greeting` with an unqualified `name` child and returns `{urn:greeting}greetingResponse` with an unqualified `return` child.
 
-`Greeting.wsdl` declares:
-
-| Item | Value |
-|---|---|
-| Target namespace | `urn:greeting` |
-| Request / response elements and messages | `greeting` / `greetingResponse` |
-| Port type / operation | `GreetingPortType` / `greeting` |
-| Participant service / port | `GreetingService` / `GreetingPort` |
-| Participant source address | `http://localhost:8081/participants/greeting` |
-| Process service / port | `GreetingOrchestratorService` / `GreetingOrchestratorPort` |
-| Process source address | `http://localhost:8080/ode/processes/GreetingOrchestrator` |
-| Partner-link type / role | `GreetingLink` / `provider` |
-
-The contract includes a SOAP document/literal binding and a BPEL partner-link type. Metro's generated WSDL supplies the Java service contract, but does not supply your BPEL partner links or ODE deployment descriptor. For this exercise, the copied WSDL intentionally describes both the participant and orchestration services using the same operation and messages.
-
-### Inspect the BPEL activities
-
-`GreetingProcess.bpel` must have process name `GreetingProcess`, target namespace `urn:greeting-orchestrator`, and an import of `Greeting.wsdl` for namespace `urn:greeting`.
-
-1. **Receive** uses partner link `client`, operation `greeting`, request variable `request`, and `createInstance="yes"` to start an instance.
-2. **CallParticipant** invokes partner link `participant`, using `request` as input and `response` as output.
-3. **Reply** returns `response` to `client` for the same operation.
-
-The client partner link uses `myRole="provider"`; the participant uses `partnerRole="provider"`. Both refer to `GreetingLink`. The message variables refer to the WSDL message QNames, not Java type names.
-
-### Inspect the ODE descriptor
-
-The generated `deploy.xml` is equivalent to:
+Create `Greeting.wsdl` with these contents:
 
 ```xml
-<deploy xmlns="http://www.apache.org/ode/schemas/dd/2007/03"
-        xmlns:p="urn:greeting-orchestrator"
-        xmlns:g="urn:greeting">
-  <process name="p:GreetingProcess">
-    <active>true</active>
-    <retired>false</retired>
-    <provide partnerLink="client">
-      <service name="g:GreetingOrchestratorService"
-               port="GreetingOrchestratorPort"/>
-    </provide>
-    <invoke partnerLink="participant">
-      <service name="g:GreetingService" port="GreetingPort"/>
-    </invoke>
-  </process>
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions
+    xmlns="http://schemas.xmlsoap.org/wsdl/"
+    xmlns:tns="urn:greeting"
+    xmlns:xs="http://www.w3.org/2001/XMLSchema"
+    xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/"
+    xmlns:plnk="http://docs.oasis-open.org/wsbpel/2.0/plnktype"
+    targetNamespace="urn:greeting">
+    <types>
+        <xs:schema targetNamespace="urn:greeting" elementFormDefault="unqualified">
+            <xs:element name="greeting">
+                <xs:complexType>
+                    <xs:sequence>
+                        <xs:element name="name" type="xs:string" minOccurs="0"/>
+                    </xs:sequence>
+                </xs:complexType>
+            </xs:element>
+            <xs:element name="greetingResponse">
+                <xs:complexType>
+                    <xs:sequence>
+                        <xs:element name="return" type="xs:string" minOccurs="0"/>
+                    </xs:sequence>
+                </xs:complexType>
+            </xs:element>
+        </xs:schema>
+    </types>
+
+    <message name="greeting">
+        <part name="parameters" element="tns:greeting"/>
+    </message>
+    <message name="greetingResponse">
+        <part name="parameters" element="tns:greetingResponse"/>
+    </message>
+
+    <!-- The Java participant's contract. -->
+    <portType name="GreetingPortType">
+        <operation name="greeting">
+            <input message="tns:greeting"/>
+            <output message="tns:greetingResponse"/>
+        </operation>
+    </portType>
+
+    <!-- The process's public contract, defined independently. -->
+    <portType name="GreetingProcessPortType">
+        <operation name="greeting">
+            <input message="tns:greeting"/>
+            <output message="tns:greetingResponse"/>
+        </operation>
+    </portType>
+
+    <binding name="GreetingBinding" type="tns:GreetingPortType">
+        <soap:binding style="document" transport="http://schemas.xmlsoap.org/soap/http"/>
+        <operation name="greeting">
+            <soap:operation soapAction=""/>
+            <input>
+                <soap:body use="literal"/>
+            </input>
+            <output>
+                <soap:body use="literal"/>
+            </output>
+        </operation>
+    </binding>
+    <binding name="GreetingProcessBinding" type="tns:GreetingProcessPortType">
+        <soap:binding style="document" transport="http://schemas.xmlsoap.org/soap/http"/>
+        <operation name="greeting">
+            <soap:operation soapAction=""/>
+            <input>
+                <soap:body use="literal"/>
+            </input>
+            <output>
+                <soap:body use="literal"/>
+            </output>
+        </operation>
+    </binding>
+
+    <service name="GreetingService">
+        <port name="GreetingPort" binding="tns:GreetingBinding">
+            <soap:address location="http://localhost:8081/participants/greeting"/>
+        </port>
+    </service>
+    <service name="GreetingOrchestratorService">
+        <port name="GreetingOrchestratorPort" binding="tns:GreetingProcessBinding">
+            <soap:address location="http://localhost:8080/ode/processes/GreetingOrchestrator"/>
+        </port>
+    </service>
+
+    <plnk:partnerLinkType name="GreetingClientLink">
+        <plnk:role name="provider" portType="tns:GreetingProcessPortType"/>
+    </plnk:partnerLinkType>
+    <plnk:partnerLinkType name="GreetingParticipantLink">
+        <plnk:role name="provider" portType="tns:GreetingPortType"/>
+    </plnk:partnerLinkType>
+</definitions>
+```
+
+Here, the participant and public process definitions are kept in one WSDL to make the exercise self-contained. For a larger project, put them in separate WSDLs and import shared XSDs or messages as appropriate; the BPEL process must import each required WSDL namespace and the deployment directory must include all referenced files. Preserve the participant's actual contract when defining its BPEL-facing WSDL. A BPEL partner-link type adds role information to that contract; Metro does not generate it for you.
+
+`GreetingProcessPortType` is the public interface of the process. `GreetingPortType` describes the external participant. The two interfaces can evolve independently; sharing message types here does not require sharing a port type.
+
+### Define the executable BPEL process
+
+Create `GreetingProcess.bpel` with these contents:
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<process
+    xmlns="http://docs.oasis-open.org/wsbpel/2.0/process/executable"
+    xmlns:g="urn:greeting"
+    name="GreetingProcess"
+    targetNamespace="urn:greeting-orchestrator"
+    suppressJoinFailure="yes">
+    <import
+        namespace="urn:greeting"
+        location="Greeting.wsdl"
+        importType="http://schemas.xmlsoap.org/wsdl/"/>
+
+    <partnerLinks>
+        <partnerLink name="client" partnerLinkType="g:GreetingClientLink" myRole="provider"/>
+        <partnerLink
+            name="participant"
+            partnerLinkType="g:GreetingParticipantLink"
+            partnerRole="provider"/>
+    </partnerLinks>
+
+    <variables>
+        <variable name="request" messageType="g:greeting"/>
+        <variable name="response" messageType="g:greetingResponse"/>
+    </variables>
+
+    <sequence name="GreetingSequence">
+        <receive
+            name="Receive"
+            partnerLink="client"
+            portType="g:GreetingProcessPortType"
+            operation="greeting"
+            variable="request"
+            createInstance="yes"/>
+        <invoke
+            name="CallParticipant"
+            partnerLink="participant"
+            portType="g:GreetingPortType"
+            operation="greeting"
+            inputVariable="request"
+            outputVariable="response"/>
+        <reply
+            name="Reply"
+            partnerLink="client"
+            portType="g:GreetingProcessPortType"
+            operation="greeting"
+            variable="response"/>
+    </sequence>
+</process>
+```
+
+Open it with **Open With → BPEL Designer** (the BPEL graphical editor) and inspect the diagram and Properties view. If the editor displays a Source tab, save source edits before returning to Design. The executable process consists of:
+
+1. **Receive**, using the client's public port type and `createInstance="yes"`, starts an instance and stores the incoming message in `request`.
+2. **CallParticipant**, an Invoke using the participant port type, sends `request` and stores the participant's reply in `response`.
+3. **Reply**, using the client's public port type, returns `response` to the original caller.
+
+The `client` partner link uses `myRole`: the process implements that role. The `participant` partner link uses `partnerRole`: the process calls another service implementing that role. Variable `messageType` values refer to WSDL message QNames, not XML element names or Java class names, even when their local names happen to match.
+
+To build a different process, first define its public and participant contracts. Declare separate input/output variables for incompatible message types, then insert **Assign** activities before and after Invoke to map the XML data. Initialize target message elements before assigning individual fields. The direct reuse of `request` and `response` above is specific to this exercise's matching message types; the project/import/partner-link/deployment workflow remains the same for different contracts.
+
+### Define the ODE deployment descriptor
+
+Create `deploy.xml` with these contents:
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<deploy
+    xmlns="http://www.apache.org/ode/schemas/dd/2007/03"
+    xmlns:p="urn:greeting-orchestrator"
+    xmlns:g="urn:greeting">
+    <process name="p:GreetingProcess">
+        <active>true</active>
+        <retired>false</retired>
+        <provide partnerLink="client">
+            <service name="g:GreetingOrchestratorService" port="GreetingOrchestratorPort"/>
+        </provide>
+        <invoke partnerLink="participant">
+            <service name="g:GreetingService" port="GreetingPort"/>
+        </invoke>
+    </process>
 </deploy>
 ```
 
-The descriptor's process QName must match the BPEL process. Each `partnerLink` must match its BPEL declaration; service QNames and port names must match the WSDL. Prefix spelling is arbitrary, but the bound namespace URI is significant.
+Open it with **Open With → ODE Deployment Descriptor Editor** to inspect the process form. The editor is an authoring tool; deployment still uses the Docker scripts. After updating from an older environment, rebuild the IDE image to install the descriptor-editor fix (see troubleshooting).
+
+The process QName must match the BPEL process's namespace and name. The `provide` entry binds the client partner link to the public WSDL service/port; `invoke` binds the participant partner link to its service/port. All referenced names must match their declarations exactly. XML prefix spelling is arbitrary, while the namespace URI is significant.
 
 ### Deploy on Apache ODE
+
+Save all three files, then run from the repository root on your computer:
 
 ```bash
 bash scripts/docker.sh deploy
@@ -297,7 +427,7 @@ curl --fail --silent --show-error \
 
 On ODE startup, `docker/deploy.py` scans immediate subdirectories of `/processes` with a `deploy.xml`. It copies `.bpel`, `.wsdl`, `.xsd`, and `.xml` files, including nested files, into `/opt/tomcat/webapps/ode/WEB-INF/processes/<folder>`, copying the descriptor last. ODE compiles each deployment unit. This restarts ODE and interrupts in-flight requests; use it between laboratory test runs.
 
-The Compose ODE healthcheck still checks the original Orchestrator. A successful deploy command therefore does not prove that your new process compiled: inspect ODE logs and fetch the new WSDL explicitly. A new endpoint may take a short time to appear.
+The Compose ODE healthcheck still checks the original Orchestrator. A successful deploy command therefore does not prove that your new process compiled: inspect ODE logs and fetch the new WSDL explicitly. A new endpoint may take a short time to appear. ODE can publish different service and port-type names from those in the source WSDL; section 4 generates Java client types from the published contract.
 
 ## 4. Test the complete orchestration
 
@@ -342,7 +472,7 @@ The final command checks the original HelloProcess and editor as a regression ch
 
 ### Invoke the orchestrator from a Java client in Eclipse
 
-After deploying GreetingProcess, use the same `GreetingClients` project, but generate a **second set of client types from ODE's published WSDL**. Although the request/response XML matches the participant contract, ODE's published WSDL in this environment names the service `GreetingOrchestrator` and the port type `GreetingOrchestratorPortType`. These differ from the service and port-type names in the source `Greeting.wsdl`. Generate against the running endpoint rather than assuming the source names survive publication unchanged.
+After deploying GreetingProcess, use the same `GreetingClients` project, but generate a **second set of client types from ODE's published WSDL**. Although the request/response XML matches the participant contract, ODE's published WSDL in this environment names the service `GreetingOrchestrator` and the port type `GreetingOrchestratorPortType`. These differ from the source WSDL's `GreetingOrchestratorService` and `GreetingProcessPortType`. Generate against the running endpoint rather than assuming the source names survive publication unchanged.
 
 Run from your host terminal, in the repository root:
 
@@ -432,9 +562,18 @@ Save files before deploying. Refresh Eclipse after terminal edits. Source files 
 | Invoke cannot connect | Use `participants:8081` inside Docker; check the deployed WSDL copy, not just host sources |
 | SOAP fault or unexpected empty field | Check namespace URIs, wrapper names, unqualified `name`, operation, message parts, and schema compatibility |
 | New process fails but Compose is healthy | Healthchecks cover the original example; call and test the new endpoint explicitly |
+| Opening `deploy.xml` reports “Path must include project and resource name” | Rebuild/recreate the IDE using the command below; the image patches the legacy editor's project-root lookup. Then reopen the descriptor |
 | Eclipse cannot see new files | Refresh or import the project; use `/project/processes/...`, without copying into the workspace |
 | Eclipse edits are not on the host | Check that the project is under `/project`, rather than only under `/workspace` |
 | Removing a source folder does not undeploy it | Snapshot deployment does not delete old units or stale files in the persistent ODE volume; renaming is not undeployment |
+
+To install the descriptor-editor fix in an existing environment, save your Eclipse files first, then run:
+
+```bash
+docker compose up -d --build --wait --wait-timeout 600 ide
+```
+
+This recreates the IDE container while keeping its named workspace volume and your mounted sources. Reopen `deploy.xml` with **Open With → ODE Deployment Descriptor Editor**. The startup check now opens the deployment descriptor's process form as well as checking the BPEL diagram. No project relocation or source renaming is required.
 
 Useful diagnostics:
 

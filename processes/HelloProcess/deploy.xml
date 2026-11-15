@@ -1,1 +1,16 @@
-<deploy xmlns="http://www.apache.org/ode/schemas/dd/2007/03" xmlns:p="urn:orchestrator" xmlns:h="urn:hello"><process name="p:HelloProcess"><active>true</active><retired>false</retired><provide partnerLink="client"><service name="h:OrchestratorService" port="OrchestratorPort"/></provide><invoke partnerLink="participant"><service name="h:HelloService" port="HelloPort"/></invoke></process></deploy>
+<?xml version="1.0" encoding="UTF-8"?>
+<deploy
+    xmlns="http://www.apache.org/ode/schemas/dd/2007/03"
+    xmlns:p="urn:orchestrator"
+    xmlns:h="urn:hello">
+    <process name="p:HelloProcess">
+        <active>true</active>
+        <retired>false</retired>
+        <provide partnerLink="client">
+            <service name="h:OrchestratorService" port="OrchestratorPort"/>
+        </provide>
+        <invoke partnerLink="participant">
+            <service name="h:HelloService" port="HelloPort"/>
+        </invoke>
+    </process>
+</deploy>

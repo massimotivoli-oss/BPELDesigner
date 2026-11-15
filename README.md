@@ -72,7 +72,7 @@ The example receives a name, invokes the participant in the other container, and
 
 ## Working in Eclipse
 
-`HelloProcess` is imported and `HelloProcess.bpel` opens automatically. The startup plugin in `docker/eclipse-startup/` writes `/workspace/.metadata/bpel-editor-check.ok` only after opening the BPEL editor, checking graphical activities, and selecting them with the Properties view available. An error records a stack trace and fails the healthcheck.
+`HelloProcess` is imported and `HelloProcess.bpel` opens automatically. The startup plugin in `docker/eclipse-startup/` writes `/workspace/.metadata/bpel-editor-check.ok` only after opening the BPEL editor, checking graphical activities, selecting them with the Properties view available, and opening the ODE deployment descriptor process form. An error records a stack trace and fails the healthcheck.
 
 1. Open the browser desktop and check that a diagram appears, rather than just XML text.
 2. Select Receive, CallParticipant, and Reply and inspect their properties.
@@ -123,6 +123,8 @@ bash scripts/docker.sh down
 
 ## Validation history
 
+The follow-up tutorial/editor update was checked on November 15, 2026: an isolated Eclipse workbench opened the actual ODE deployment process form and BPEL diagram, then passed its desktop healthcheck. The new process was created from the tutorial's complete WSDL/BPEL/descriptor listings and deployed in separate containers. Both Java clients returned `Hello, Ada!`; original and new processes passed WSDL, direct/orchestrated SOAP, Unicode/XML/empty-input and concurrent-call checks. XML formatting was checked to preserve elements, attributes, namespaces, and values.
+
 The English-language update and the tutorial were validated locally on November 15, 2026 in an isolated Docker Compose project. The tutorial snippets produced a second JAX-WS endpoint and BPEL deployment. Maven packaging and ODE deployment passed; both the original and tutorial examples passed two WSDL checks, four direct SOAP calls, four orchestrated cases, and twelve concurrent orchestrations each, using the English response. XML/shell syntax and the namespace-preserving deployment checks also passed. This update did not repeat the Eclipse browser, restart, or recreation checks.
 
 The previous native pipeline passed its SOAP test on November 14, 2026: [run 43640763523](https://github.com/massimotivoli-oss/BPELDesigner/actions/runs/43640763523). That result applies to the earlier configuration and does not validate Docker or Eclipse.
@@ -131,7 +133,7 @@ Local Docker validation passed on an Apple Silicon Mac on November 14, 2026: bui
 
 The session's browser-control tool was unavailable: the noVNC browser workflow on the Mac, including editing and saving, was not manually tested. Graphical verification combined an SWT workbench check with screenshot inspection. The [Docker pipeline for commit `6b6233a`](https://github.com/massimotivoli-oss/BPELDesigner/actions/runs/43647197856) passed a clean Linux amd64 build, editor/property checks, SOAP, restart, and recreation with retained volumes. CI evidence is in that run's `docker-test-evidence` artifact. These historical results predate the English greeting introduced with this documentation update.
 
-Compatibility fixes include an Eclipse process healthcheck compatible with Rosetta, the missing Xalan serializer in the ODE WAR, BPEL bundles whose WSDL4J constraints rejected Photon's version qualifier, and an SWT stall during GTK printer discovery. `docker/patch-eclipse.py` aligns eight BPEL bundles with WSDL4J `[1.6.2,1.7.0)` and removes signatures only from modified JARs. These are local derivatives of the original plugins, not unmodified Eclipse distributions. SWT printing is disabled in the virtual desktop to avoid printer-discovery stalls.
+Compatibility fixes include an Eclipse process healthcheck compatible with Rosetta, the ODE descriptor editor's invalid project-root folder lookup, the missing Xalan serializer in the ODE WAR, BPEL bundles whose WSDL4J constraints rejected Photon's version qualifier, and an SWT stall during GTK printer discovery. `docker/patch-eclipse.py` aligns eight BPEL bundles with WSDL4J `[1.6.2,1.7.0)` and removes signatures only from modified JARs. The build also patches the ODE deployment editor to scan plain BPEL project roots or configured WTP web-content folders, using the ASM library already included in Photon. Startup checks open the actual deployment process form as well as the BPEL diagram. These are local derivatives of the original plugins, not unmodified Eclipse distributions. SWT printing is disabled in the virtual desktop to avoid printer-discovery stalls.
 
 The workflow checks build, actual BPEL editor startup, SOAP, restart, and recreation, saving logs and screenshots even on failure. A passing run validates this configuration; it is not a general production-readiness certification. Mac visual and performance checks remain necessary, especially under emulation.
 
