@@ -215,7 +215,7 @@ For this exercise, GreetingProcess accepts a greeting request and invokes the Gr
 2. Name the project `GreetingProcess`, clear **Use default location**, and enter `/project/processes/GreetingProcess` as its location. Keep the BPEL 2.0 project configuration. Leave the target runtime unset if no Eclipse server runtime is configured: the servers used here run in Docker.
 3. Click **Next** to review the BPEL facet settings and keep **Content Folder** set to `bpelContent`. Finish the wizard and switch to the BPEL perspective if Eclipse offers it.
 4. Select `bpelContent` and create the public process contract **`GreetingProcess.wsdl`**, either manually with **File → New → File** or with **File → New → Other → Web Services → WSDL File** and **Create WSDL Skeleton** enabled. The two options are detailed under [Define the WSDL contracts](#define-the-wsdl-contracts). Complete and save the process-only WSDL shown below. Create a second file, **`GreetingService.wsdl`**, by copying the XML published at [the participant WSDL](http://localhost:8081/participants/greeting?wsdl), and save its imported XSD locally as explained below. Then create `GreetingProcess.bpel` with **BPEL 2.0 → BPEL Process File**, choosing **Create a BPEL process from a service description**, as detailed under [Create the process with the BPEL Designer wizard](#create-the-process-with-the-bpel-designer-wizard).
-5. Select the **project root** and use **File → New → File** to create `deploy.xml`, with the contents below. Keep this descriptor in the root because the Docker deployment script uses its presence there to recognize a deployment unit.
+5. Select the **project root** and choose **File → New → Other → BPEL 2.0 → BPEL Deployment Descriptor** to generate `deploy.xml`, as detailed under [Define the ODE deployment descriptor](#define-the-ode-deployment-descriptor). Keep this descriptor in the root because the Docker deployment script uses its presence there to recognize a deployment unit.
 
 Use the BPEL Project wizard so Eclipse configures the BPEL 2.0 facet, content-folder mapping, and BPEL validation builder. You can inspect the facet under **Project → Properties → Project Facets**. Keep the generated `.project` and `.settings` metadata; do not replace them with the metadata from HelloProcess.
 
@@ -510,7 +510,15 @@ To build a different process, first define its public and participant contracts.
 
 ### Define the ODE deployment descriptor
 
-Create `deploy.xml` in the project root with these contents:
+Create the descriptor with the BPEL Designer wizard:
+
+1. Save the BPEL process and its WSDL/XSD files, then select the `GreetingProcess` **project root** in Project Explorer.
+2. Choose **File → New → Other → BPEL 2.0 → BPEL Deployment Descriptor** and click **Next**.
+3. Set the destination folder/container to `/GreetingProcess` and keep the file name `deploy.xml`. If the wizard proposes `bpelContent`, change the destination to the project root: the Docker deployment script discovers units by their root-level descriptor.
+4. Click **Finish**. The wizard generates the descriptor and discovers the process in the project's BPEL content folder.
+5. In the deployment editor, verify the process QName `{urn:greeting-orchestrator}GreetingProcess`, enable the process, and leave it non-retired. Configure the client partner link as the provided interface, using `{urn:greeting-orchestrator}GreetingProcessService` / `GreetingProcessPort`; configure the participant partner link as the invoked interface, using `{urn:greeting}GreetingService` / `GreetingPort`. Complete or correct the generated mappings in the editor's form or Source view, then save.
+
+The completed descriptor should be equivalent to this reference; the wizard supplies the starting file rather than requiring you to create an empty XML file manually:
 
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
