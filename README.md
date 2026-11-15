@@ -72,14 +72,14 @@ The example receives a name, invokes the participant in the other container, and
 
 ## Working in Eclipse
 
-`HelloProcess` is imported and `HelloProcess.bpel` opens automatically. The startup plugin in `docker/eclipse-startup/` writes `/workspace/.metadata/bpel-editor-check.ok` only after opening the BPEL editor, checking graphical activities, selecting them with the Properties view available, and opening the ODE deployment descriptor process form. An error records a stack trace and fails the healthcheck.
+`HelloProcess` is imported as a BPEL 2.0 project and `bpelContent/HelloProcess.bpel` opens automatically. Its facet is visible under **Project → Properties → Project Facets**. The startup check verifies the installed BPEL facet and content-folder mapping, including in an existing workspace. The startup plugin in `docker/eclipse-startup/` writes `/workspace/.metadata/bpel-editor-check.ok` only after opening the BPEL editor, checking graphical activities, selecting them with the Properties view available, and opening the ODE deployment descriptor process form. An error records a stack trace and fails the healthcheck.
 
 1. Open the browser desktop and check that a diagram appears, rather than just XML text.
 2. Select Receive, CallParticipant, and Reply and inspect their properties.
 3. Edit and save: `/project` maps to the local repository directory.
 4. For Java, choose **File → Import → Maven → Existing Maven Projects**, with `/project/services` as the root.
 
-For new processes, choose **File → New → Other → BPEL 2.0 → BPEL Project**, under `/project/processes`. Keep the default `bpelContent` folder for BPEL, WSDL, and any XSD files, and place `deploy.xml` in the project root for discovery by the Docker deployment script. The example is imported as a resource project and explicitly opened with the BPEL editor; it does not declare a nonexistent project nature. Scripts handle deployment rather than the Eclipse server adapter. See the [tutorial](docs/TUTORIAL.md) for a complete second process.
+For new processes, choose **File → New → Other → BPEL 2.0 → BPEL Project**, under `/project/processes`. Keep the default `bpelContent` folder for BPEL, WSDL, and any XSD files, and place `deploy.xml` in the project root for discovery by the Docker deployment script. The bundled HelloProcess is also a faceted BPEL 2.0 project: `.project` registers the WTP natures and BPEL validation builder, `.settings` declares the facet and content mapping, and `bpelContent` holds its BPEL/WSDL files. Scripts handle deployment rather than the Eclipse server adapter. See the [tutorial](docs/TUTORIAL.md) for a complete second process.
 
 On Linux, the desktop uses UID/GID 1000: the mounted directory must be writable by that user. The container does not change ownership of host sources.
 
@@ -92,7 +92,7 @@ bash scripts/docker.sh deploy
 bash scripts/docker.sh test
 ```
 
-Deployment restarts ODE and copies a snapshot of each immediate subdirectory of `processes/` containing `deploy.xml`. It rewrites the exact `http://localhost:8081/` and `http://localhost:8080/` prefixes to Compose DNS names **in the deployed WSDL copies only**. Host sources are preserved. Included tests cover HelloProcess; add specific tests for additional processes. Deployment does not remove old deployment directories or stale files when you delete or rename sources.
+Deployment restarts ODE and copies a snapshot of each immediate subdirectory of `processes/` containing `deploy.xml`. It rewrites the exact `http://localhost:8081/` and `http://localhost:8080/` prefixes to Compose DNS names **in the deployed WSDL copies only**. Host sources are preserved. Included tests cover HelloProcess; add specific tests for additional processes. Deployment does not generally remove old deployment directories or stale files when you delete or rename sources. The HelloProcess layout upgrade has a targeted migration: it removes only the former root `HelloProcess.bpel`, `Hello.wsdl`, and `HelloProcess.cbp` before deploying the files under `bpelContent`; the relocated process is compiled before ODE restores its process registry, while other files and the ODE database are retained.
 
 After changing Java or the participant's deployment descriptors:
 
@@ -102,6 +102,17 @@ bash scripts/docker.sh test
 ```
 
 Maven builds `participants.war` inside Docker and the image installs it on the participant Tomcat. A Java source save alone does not update the running WAR. Re-run `bash scripts/docker.sh up` after changing images or the startup plugin. Avoid redeploying while important instances are running: restarting is a laboratory procedure that interrupts execution.
+
+## Updating an existing HelloProcess workspace
+
+Save any open Eclipse files before updating. HelloProcess now uses the same BPEL 2.0 facet and `bpelContent` layout as projects created through the BPEL Project wizard. After pulling this change, run:
+
+```bash
+docker compose up -d --build --wait --wait-timeout 600 ide ode
+bash scripts/docker.sh test
+```
+
+The updated startup plugin refreshes HelloProcess's versioned project description in the retained Eclipse workspace and opens the new BPEL path. ODE's startup deployment migrates the previous root files, including its compiled `.cbp`, without deleting named volumes. Reopen the process from `HelloProcess/bpelContent` if an old editor tab refers to the removed root path. Do not save an obsolete root editor tab back to its old location.
 
 ## Persistence and shutdown
 
@@ -122,6 +133,8 @@ bash scripts/docker.sh down
 `down` retains volumes. `docker compose down -v` deletes the workspace and ODE state: use it only for an intentional reset. `restart-test` checks service recovery after restart; `recreate-test` recreates containers while retaining volumes. Neither verifies recovery of long-running processes or database crashes.
 
 ## Validation history
+
+HelloProcess's BPEL 2.0 conversion was checked on November 15, 2026 using an existing plain-project Eclipse workspace and an existing ODE database/deployment in isolated volumes. The upgraded workbench verified the installed facet and `bpelContent` mapping, opened both BPEL and deployment editors, and passed the desktop healthcheck. ODE recompiled the relocated process before restoring its registry; the migrated process passed the SOAP integration suite with the database retained. Static checks also cover facet metadata and removal of obsolete root files while preserving unrelated files.
 
 The follow-up tutorial/editor update was checked on November 15, 2026: an isolated Eclipse workbench opened the actual ODE deployment process form and BPEL diagram, then passed its desktop healthcheck. The new process was created from the tutorial's complete WSDL/BPEL/descriptor listings and deployed in separate containers. Both Java clients returned `Hello, Ada!`; original and new processes passed WSDL, direct/orchestrated SOAP, Unicode/XML/empty-input and concurrent-call checks. XML formatting was checked to preserve elements, attributes, namespaces, and values.
 

@@ -24,6 +24,10 @@ CMD ["catalina.sh", "run"]
 FROM base AS ode
 COPY docker/install-ode.py docker/deploy.py docker/configure-tomcat.py /opt/tools/
 RUN python3 /opt/tools/install-ode.py && python3 /opt/tools/configure-tomcat.py 8080
+COPY docker/PrepareHelloProcess.java /opt/tools/
+RUN mkdir -p /opt/tools/classes && javac -encoding UTF-8 \
+    -cp '/opt/tomcat/webapps/ode/WEB-INF/lib/*' -d /opt/tools/classes \
+    /opt/tools/PrepareHelloProcess.java
 COPY docker/ode-entrypoint.sh /opt/tools/
 EXPOSE 8080
 ENTRYPOINT ["bash", "/opt/tools/ode-entrypoint.sh"]

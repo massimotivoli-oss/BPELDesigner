@@ -5,12 +5,18 @@ import xml.etree.ElementTree as E
 from pathlib import Path
 
 root = Path(__file__).resolve().parent.parent
-original = root / 'processes/HelloProcess/Hello.wsdl'
+original = root / 'processes/HelloProcess/bpelContent/Hello.wsdl'
 before = original.read_bytes()
 with tempfile.TemporaryDirectory(prefix='bpeldesigner-deploy-') as directory:
     target = Path(directory)
+    legacy = target / 'HelloProcess'
+    legacy.mkdir()
+    for name in ['HelloProcess.bpel', 'Hello.wsdl', 'HelloProcess.cbp']:
+        (legacy / name).write_text('legacy deployment')
+    # Unrelated packages/files must survive the migration.
+    (legacy / 'unrelated.txt').write_text('keep')
     subprocess.run(['python3', str(root / 'docker/deploy.py'), str(root / 'processes'), str(target)], check=True)
-    deployed = target / 'HelloProcess/Hello.wsdl'
+    deployed = target / 'HelloProcess/bpelContent/Hello.wsdl'
     # WSDL contains QName-valued attributes. Their namespace declarations must survive.
     namespaces = {}
     for _, declaration in E.iterparse(deployed, events=['start-ns']):
@@ -21,7 +27,11 @@ with tempfile.TemporaryDirectory(prefix='bpeldesigner-deploy-') as directory:
     addresses = {node.get('location') for node in E.parse(deployed).findall(
         './/{http://schemas.xmlsoap.org/wsdl/soap/}address')}
     assert addresses == {'http://participants:8081/participants/hello', 'http://ode:8080/ode/processes/Orchestrator'}
-    for name in ['HelloProcess.bpel', 'deploy.xml']:
-        assert (target / 'HelloProcess' / name).read_bytes() == (original.parent / name).read_bytes()
+    for name in ['bpelContent/HelloProcess.bpel', 'deploy.xml']:
+        assert (target / 'HelloProcess' / name).read_bytes() == (original.parent.parent / name).read_bytes()
+    assert not (target / 'HelloProcess/.settings').exists(), 'IDE metadata was deployed'
+    for name in ['HelloProcess.bpel', 'Hello.wsdl', 'HelloProcess.cbp']:
+        assert not (legacy / name).exists(), 'Obsolete root process survived migration'
+    assert (legacy / 'unrelated.txt').read_text() == 'keep'
     assert original.read_bytes() == before, 'Deployment modified host sources'
 print('PASS: Docker deployment preserves WSDL namespaces and source files; uses container DNS')

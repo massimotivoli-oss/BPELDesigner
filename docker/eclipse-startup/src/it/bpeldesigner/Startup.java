@@ -28,10 +28,27 @@ public class Startup implements IStartup {
                 IProject project = workspace.getRoot().getProject(description.getName());
                 if (!project.exists()) project.create(description, null);
                 project.open(null);
+                // Re-read versioned natures/builders when upgrading an existing workspace.
+                project.setDescription(description, null);
                 project.refreshLocal(IResource.DEPTH_INFINITE, null);
                 for (String nature : project.getDescription().getNatureIds()) {
                     if (workspace.getNatureDescriptor(nature) == null)
                         throw new IllegalStateException("Unknown project nature: " + nature);
+                }
+                org.eclipse.wst.common.project.facet.core.IFacetedProject faceted =
+                    org.eclipse.wst.common.project.facet.core.ProjectFacetsManager.create(project);
+                org.eclipse.wst.common.project.facet.core.IProjectFacetVersion bpelFacet =
+                    org.eclipse.wst.common.project.facet.core.ProjectFacetsManager
+                        .getProjectFacet("bpel.facet.core").getVersion("2.0");
+                if (faceted == null || !faceted.hasProjectFacet(bpelFacet)) {
+                    throw new IllegalStateException("HelloProcess is missing the BPEL 2.0 facet");
+                }
+                Class<?> deployLookup = Platform.getBundle("org.eclipse.bpel.apache.ode.deploy.ui")
+                    .loadClass("org.eclipse.bpel.apache.ode.deploy.ui.util.DeployUtils");
+                org.eclipse.core.runtime.IPath contentRoot = (org.eclipse.core.runtime.IPath) deployLookup
+                    .getMethod("getWebContentRootPath", IProject.class).invoke(null, project);
+                if (contentRoot == null || !"bpelContent".equals(contentRoot.makeRelative().toString())) {
+                    throw new IllegalStateException("Unexpected BPEL content folder: " + contentRoot);
                 }
                 IWorkbenchWindow window = PlatformUI.getWorkbench().getActiveWorkbenchWindow();
                 IWorkbenchPage page = window.getActivePage();
@@ -42,8 +59,8 @@ public class Startup implements IStartup {
                     .loadClass("org.eclipse.bpel.apache.ode.deploy.ui.util.DeployUtils");
                 java.util.List<?> projectFiles = (java.util.List<?>) deployUtils
                     .getMethod("getAllFilesInProject", IProject.class).invoke(null, project);
-                if (!projectFiles.contains(project.getFile("Hello.wsdl"))) {
-                    throw new IllegalStateException("ODE descriptor editor cannot discover project-root WSDL");
+                if (!projectFiles.contains(project.getFile("bpelContent/Hello.wsdl"))) {
+                    throw new IllegalStateException("ODE descriptor editor cannot discover BPEL content-folder WSDL");
                 }
                 IEditorPart deployment = IDE.openEditor(page, project.getFile("deploy.xml"),
                     "org.eclipse.bpel.apache.ode.deploy.ui.editors.ODEDeployMultiPageEditor", true);
@@ -58,7 +75,7 @@ public class Startup implements IStartup {
                     throw new IllegalStateException("ODE deployment process form is unavailable");
                 }
                 page.closeEditor(deployment, false);
-                IEditorPart editor = IDE.openEditor(page, project.getFile("HelloProcess.bpel"),
+                IEditorPart editor = IDE.openEditor(page, project.getFile("bpelContent/HelloProcess.bpel"),
                     "org.eclipse.bpel.ui.bpeleditor", true);
                 if (editor == null) throw new IllegalStateException("BPEL editor creation failed; inspect workspace log");
                 if (!editor.getClass().getName().startsWith("org.eclipse.bpel."))
@@ -78,7 +95,7 @@ public class Startup implements IStartup {
                         throw new IllegalStateException("Selection/properties unavailable: " + activity.getName());
                 }
                 Files.write(Paths.get("/workspace/.metadata/bpel-editor-check.ok"),
-                    ("PASS: " + editor.getClass().getName() + " opened HelloProcess.bpel; graphical activities, properties and ODE deployment descriptor checked\n").getBytes("UTF-8"));
+                    ("PASS: " + editor.getClass().getName() + " opened bpelContent/HelloProcess.bpel; BPEL 2.0 facet, content mapping, graphical activities, properties and ODE deployment descriptor checked\n").getBytes("UTF-8"));
             } catch (Throwable error) {
                 error.printStackTrace();
                 try (PrintWriter out = new PrintWriter("/workspace/.metadata/bpel-editor-check.error", "UTF-8")) {

@@ -8,7 +8,7 @@ Allow time for the first Docker build. All paths below are relative to the repos
 
 ## 1. Understand the running example
 
-Read these files before starting:
+The supplied HelloProcess is already a BPEL 2.0 project with the same `bpelContent` layout used later in this tutorial. Its facet and content mapping are versioned under `.settings`. Read these files before starting:
 
 | File | Purpose |
 |---|---|
@@ -16,8 +16,8 @@ Read these files before starting:
 | `services/src/main/webapp/WEB-INF/sun-jaxws.xml` | Metro endpoint implementation and URL |
 | `services/src/main/webapp/WEB-INF/web.xml` | Servlet registration and URL mapping |
 | `services/pom.xml` | Java 8, Metro 2.3.7, and WAR build |
-| `processes/HelloProcess/Hello.wsdl` | Messages, port type, SOAP binding, services, and partner-link type |
-| `processes/HelloProcess/HelloProcess.bpel` | Receive → Invoke → Reply |
+| `processes/HelloProcess/bpelContent/Hello.wsdl` | Messages, port type, SOAP binding, services, and partner-link type |
+| `processes/HelloProcess/bpelContent/HelloProcess.bpel` | Receive → Invoke → Reply |
 | `processes/HelloProcess/deploy.xml` | ODE mapping between BPEL partner links and WSDL service/port names |
 
 The request flow is:
@@ -581,7 +581,7 @@ Save files before deploying. Refresh Eclipse after terminal edits. Source files 
 | Opening `deploy.xml` reports “Path must include project and resource name” | Rebuild/recreate the IDE using the command below; the image patches the legacy editor's project-root lookup. Then reopen the descriptor |
 | Eclipse cannot see new files | Refresh or import the project; use `/project/processes/...`, without copying into the workspace |
 | Eclipse edits are not on the host | Check that the project is under `/project`, rather than only under `/workspace` |
-| Removing a source folder does not undeploy it | Snapshot deployment does not delete old units or stale files in the persistent ODE volume; renaming is not undeployment |
+| Removing a source folder does not undeploy it | Snapshot deployment generally does not delete old units or stale files in the persistent ODE volume; the bundled HelloProcess layout migration is a targeted exception. Renaming is not undeployment |
 
 To install the descriptor-editor fix in an existing environment, save your Eclipse files first, then run:
 
