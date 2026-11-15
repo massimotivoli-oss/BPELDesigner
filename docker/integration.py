@@ -24,7 +24,7 @@ def hello(base, endpoint, name):
     root = E.fromstring(xml)
     assert root.find('.//{' + soap_ns + '}Fault') is None, xml
     returns = [node.text or '' for node in root.iter() if node.tag.split('}')[-1] == 'return']
-    assert returns == ['Ciao, ' + name + '!'], xml
+    assert returns == ['Hello, ' + name + '!'], xml
 
 
 if __name__ == '__main__':
@@ -32,8 +32,8 @@ if __name__ == '__main__':
         with urllib.request.urlopen(base + endpoint + '?wsdl', timeout=30) as response:
             root = E.fromstring(response.read())
         assert root.tag == '{http://schemas.xmlsoap.org/wsdl/}definitions', root.tag
-        for name in ['Massimo', 'Elena', 'È già & <pronto>', '']:
+        for name in ['Massimo', 'Elena', 'Zoë & <ready>', '']:
             hello(base, endpoint, name)
     with concurrent.futures.ThreadPoolExecutor(max_workers=4) as pool:
-        list(pool.map(lambda i: hello(ode, '/ode/processes/Orchestrator', 'Richiesta ' + str(i)), range(12)))
+        list(pool.map(lambda i: hello(ode, '/ode/processes/Orchestrator', 'Request ' + str(i)), range(12)))
     print('PASS: two WSDLs, 4 direct SOAP calls, 4 orchestrated cases, 12 concurrent orchestrations')

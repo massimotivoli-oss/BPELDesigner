@@ -1,19 +1,19 @@
 #!/usr/bin/env bash
 set -euo pipefail
 cd "$(dirname "$0")/.."
-command -v docker >/dev/null || { echo 'Installa e avvia Docker Desktop: https://docs.docker.com/desktop/setup/install/mac-install/' >&2; exit 1; }
-docker info >/dev/null 2>&1 || { echo 'Avvia Docker Desktop e attendi che il motore sia pronto.' >&2; exit 1; }
+command -v docker >/dev/null || { echo 'Install and start Docker Desktop: https://docs.docker.com/desktop/setup/install/mac-install/' >&2; exit 1; }
+docker info >/dev/null 2>&1 || { echo 'Start Docker Desktop and wait until the engine is ready.' >&2; exit 1; }
 docker compose version
 case "${1:-up}" in
   up)
     mkdir -p artifacts
     if ! docker compose --progress plain build 2>&1 | tee artifacts/build.log; then
-      echo 'Build fallita. Dettagli in artifacts/build.log.' >&2
+      echo 'Build failed. See artifacts/build.log.' >&2
       bash scripts/collect-docker-evidence.sh
       exit 1
     fi
     if ! docker compose up -d --wait --wait-timeout 600 2>&1 | tee artifacts/startup.log; then
-      echo 'Avvio fallito. Dettagli in artifacts/startup.log e artifacts/compose.log.' >&2
+      echo 'Startup failed. See artifacts/startup.log and artifacts/compose.log.' >&2
       bash scripts/collect-docker-evidence.sh
       exit 1
     fi
@@ -42,5 +42,5 @@ case "${1:-up}" in
   logs) docker compose logs --no-color --tail=200 ;;
   stop) docker compose stop ;;
   down) docker compose down ;;
-  *) echo 'Uso: bash scripts/docker.sh {up|test|restart-test|recreate-test|deploy|logs|stop|down}' >&2; exit 2 ;;
+  *) echo 'Usage: bash scripts/docker.sh {up|test|restart-test|recreate-test|deploy|logs|stop|down}' >&2; exit 2 ;;
 esac

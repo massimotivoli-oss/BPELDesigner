@@ -12,7 +12,7 @@ response="$(curl --fail-with-body -sS --max-time 30 -H 'Content-Type: text/xml; 
 SOAP_RESPONSE="$response" python3 - <<'CHECK'
 import os,xml.etree.ElementTree as E
 root=E.fromstring(os.environ['SOAP_RESPONSE'])
-if not any(e.tag.split('}')[-1]=='return' and e.text=='Ciao, Massimo!' for e in root.iter()):
+if not any(e.tag.split('}')[-1]=='return' and e.text=='Hello, Massimo!' for e in root.iter()):
  raise SystemExit('Unexpected SOAP response: '+os.environ['SOAP_RESPONSE'])
 print('PASS: client -> ODE :8080 -> JAX-WS :8081 -> client')
 CHECK

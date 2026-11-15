@@ -1,40 +1,45 @@
 # BPELDesigner
 
-Ambiente Docker con **Eclipse Photon/BPEL Designer nel browser**, **Apache ODE su Tomcat** e servizi SOAP **JAX-WS su un secondo Tomcat**. Java, Maven, Eclipse e server vengono installati dentro le immagini.
+A Docker laboratory for developing **JAX-WS SOAP services** and **WS-BPEL 2.0 processes**, with **Eclipse Photon/BPEL Designer in your browser**, **Apache ODE on Tomcat**, and SOAP participants on a **separate Tomcat**. Java, Maven, Eclipse, and both servers run inside the images.
 
-## Stato del collaudo
+Designed for master's students: you can edit the mounted sources, build a service, deploy an orchestration, and test the complete SOAP call chain without installing the legacy Java toolchain on your computer.
 
-La precedente pipeline nativa ha superato il test SOAP il 14 novembre 2026: [run 43640763523](https://github.com/massimotivoli-oss/BPELDesigner/actions/runs/43640763523). Quel risultato riguarda la configurazione precedente: **non certifica Docker né Eclipse**.
+## Tutorials
 
-**Collaudo locale superato sul Mac Apple Silicon il 14 novembre 2026**: build; tre servizi healthy; `test`, `restart-test` e `recreate-test` con exit code 0. Ogni test verifica due WSDL, quattro chiamate SOAP dirette, quattro casi orchestrati e dodici orchestrazioni concorrenti. Eclipse apre il vero editor BPEL, verifica le attività grafiche e le seleziona con Properties disponibile. Screenshot del diagramma e del pannello Reply verificato; noVNC dal Mac risponde HTTP 200. Log e screenshot sono in `artifacts/` (non versionati).
+Start with [First launch](#first-launch), then follow the [student development tutorial](docs/TUTORIAL.md):
 
-Il browser di controllo della sessione non è disponibile: non è stata eseguita una prova manuale del flusso noVNC nel browser del Mac, né di modifica/salvataggio. La verifica grafica combina il test nel workbench SWT con l'ispezione dello screenshot. La [pipeline Docker sul commit `6b6233a`](https://github.com/massimotivoli-oss/BPELDesigner/actions/runs/43647197856) è passata: build da checkout pulito Linux amd64, editor e proprietà, SOAP, riavvio e ricreazione con volumi conservati. Le evidenze CI sono nell'artifact `docker-test-evidence` del run.
+1. [Understand the example and container addresses](docs/TUTORIAL.md#1-understand-the-running-example).
+2. [Create and deploy a new JAX-WS service](docs/TUTORIAL.md#2-create-a-new-jax-ws-service).
+3. [Create and deploy a new BPEL process](docs/TUTORIAL.md#3-create-a-new-bpel-process).
+4. [Test the complete orchestration](docs/TUTORIAL.md#4-test-the-complete-orchestration).
+5. [Develop your own contracts and troubleshoot](docs/TUTORIAL.md#5-develop-your-own-contracts).
 
-Correzioni incluse: healthcheck del processo Eclipse compatibile con Rosetta; Serializer Xalan mancante nel WAR ODE; vincoli WSDL4J dei bundle BPEL incompatibili con il qualificatore della versione Photon; blocco SWT nella ricerca stampanti GTK del desktop virtuale. `docker/patch-eclipse.py` allinea otto bundle BPEL a WSDL4J `[1.6.2,1.7.0)`, rimuovendo le firme dei soli JAR modificati. Sono derivati locali dei plugin originali, non distribuzioni Eclipse inalterate. La stampa SWT è disabilitata nel desktop virtuale per evitare il blocco della ricerca stampanti.
+## Components and architecture
 
-La pipeline aggiornata verifica build, apertura reale dell'editor BPEL, chiamate SOAP e riavvio. Salva log e screenshot nell'artifact `docker-test-evidence`. Un esito positivo documenta questa configurazione; non costituisce una certificazione generale o di idoneità alla produzione. Restano necessari il controllo visivo e delle prestazioni sul Mac, soprattutto in emulazione.
+```text
+Browser → Eclipse desktop (:6080) → mounted project sources
+SOAP client → ODE / Tomcat (:8080) → JAX-WS / Tomcat (:8081)
+```
 
-## Componenti e architettura
-
-| Componente | Versione | Ruolo |
+| Component | Version | Role |
 |---|---|---|
-| Eclipse Temurin / Linux | JDK 8u472-b08 / Ubuntu Jammy | Base Docker |
-| Eclipse Java EE | Photon R / 4.8, Linux x86_64 | IDE nel browser |
-| BPEL Designer e runtime ODE | `1.1.2.Final-v20180514-2000` | Feature p2 fissate |
-| Apache ODE | 1.3.8 WAR | Motore WS-BPEL 2.0 |
-| Apache Tomcat | 8.5.100 | Due container distinti |
-| Apache XML Serializer | 2.7.1, SHA-256 fissato | Dipendenza Xalan mancante nel WAR ODE |
-| Metro JAX-WS | 2.3.7 | Partecipante SOAP `javax.jws` |
-| Maven | 3.9.9 | Build Java |
-| Xvfb/Fluxbox/x11vnc/noVNC | Pacchetti Ubuntu Jammy | Desktop virtuale |
+| Eclipse Temurin / Linux | JDK 8u472-b08 / Ubuntu Jammy | Docker base |
+| Eclipse Java EE | Photon R / 4.8, Linux x86_64 | Browser IDE |
+| BPEL Designer and ODE runtime | `1.1.2.Final-v20180514-2000` | Pinned p2 features |
+| Apache ODE | 1.3.8 WAR | WS-BPEL 2.0 engine |
+| Apache Tomcat | 8.5.100 | Two separate containers |
+| Apache XML Serializer | 2.7.1, pinned SHA-256 | Xalan dependency missing from the ODE WAR |
+| Metro JAX-WS | 2.3.7 | SOAP services using `javax.jws` |
+| Maven | 3.9.9 | Java build |
+| Xvfb/Fluxbox/x11vnc/noVNC | Ubuntu Jammy packages | Virtual desktop |
 
-Tutti i container usano `linux/amd64` per compatibilità con Photon/SWT. Su Apple Silicon Docker esegue l'emulazione; non viene usato Eclipse macOS legacy. Tomcat/Maven sono verificati con SHA-512, ODE con il checksum storico SHA-1, Eclipse Linux con SHA-512 fissato. Le versioni applicative e BPEL sono fissate; la base amd64 è fissata anche per digest SHA-256, mentre i pacchetti APT possono cambiare presso i distributori. Internet serve durante la build.
+All containers use `linux/amd64` for Photon/SWT compatibility. Docker emulates this architecture on Apple Silicon; legacy macOS Eclipse is not used. Tomcat and Maven downloads are checked with SHA-512, ODE with its historical SHA-1 checksum, and Eclipse Linux with a pinned SHA-512. Application/BPEL versions and the base image's SHA-256 digest are pinned; distributor APT packages can change. Building requires Internet access.
 
-## Primo avvio
+## First launch
 
-Installare e avviare [Docker Desktop per Mac](https://docs.docker.com/desktop/setup/install/mac-install/), oppure Docker Engine con Compose su Linux. Serve Compose recente con `up --wait`. Assegnare indicativamente almeno **4 CPU e 6 GB RAM** a Docker. La prima build scarica parecchi dati e può essere lenta in emulazione.
+Install and start [Docker Desktop for Mac](https://docs.docker.com/desktop/setup/install/mac-install/), or Docker Engine with Compose on Linux. Use a recent Compose version supporting `up --wait`. Allocate approximately **4 CPUs and 6 GB RAM** to Docker. The first build downloads substantial data and can be slow under emulation.
 
-Dalla directory del progetto:
+From the project directory:
 
 ```bash
 docker info
@@ -44,69 +49,69 @@ bash scripts/docker.sh restart-test
 bash scripts/docker.sh recreate-test
 ```
 
-`up` attende tutte le healthcheck: per Eclipse deve aprirsi il vero editor BPEL, non basta che noVNC risponda. Per la diagnosi:
+`up` builds the images and waits for all healthchecks. The Eclipse check requires the actual BPEL editor to open; a working noVNC HTTP endpoint alone is insufficient. For diagnostics:
 
 ```bash
 bash scripts/docker.sh logs
 bash scripts/collect-docker-evidence.sh
 ```
 
-I file vengono esportati in `artifacts/`, esclusa da Git, incluso lo screenshot quando il desktop è disponibile.
+Evidence is exported to the Git-ignored `artifacts/` directory, including a screenshot when the desktop is available.
 
-## Accesso
+## Access
 
-| Componente | URL dal Mac | Endpoint tra container |
+| Component | URL on your computer | Container endpoint |
 |---|---|---|
-| Desktop Eclipse | [Apri Eclipse](http://localhost:6080/vnc.html?autoconnect=true&resize=scale) | `ide:6080` |
-| Processo BPEL | [WSDL Orchestrator](http://localhost:8080/ode/processes/Orchestrator?wsdl) | `http://ode:8080/ode/processes/Orchestrator` |
-| Partecipante JAX-WS | [WSDL HelloService](http://localhost:8081/participants/hello?wsdl) | `http://participants:8081/participants/hello` |
+| Eclipse desktop | [Open Eclipse](http://localhost:6080/vnc.html?autoconnect=true&resize=scale) | `ide:6080` |
+| BPEL process | [Orchestrator WSDL](http://localhost:8080/ode/processes/Orchestrator?wsdl) | `http://ode:8080/ode/processes/Orchestrator` |
+| JAX-WS participant | [HelloService WSDL](http://localhost:8081/participants/hello?wsdl) | `http://participants:8081/participants/hello` |
 
-Le porte sono pubblicate solo su `127.0.0.1`. Il desktop non richiede password e accede ai sorgenti locali: non esporre queste porte su Internet. Eclipse Photon, ODE e Tomcat 8.5 sono software legacy: ambiente destinato a sviluppo e didattica locale.
+Ports are bound to `127.0.0.1` only. The desktop has no password and can access local sources: do not expose these ports to the Internet. Eclipse Photon, ODE, and Tomcat 8.5 are legacy software intended here for local development and teaching.
 
-Il processo riceve un nome, invoca il partecipante nell'altro container e restituisce `Ciao, <nome>!`. Lo schema document/literal usa radice qualificata e parametro `name` non qualificato. Il test verifica entrambi i WSDL, quattro chiamate dirette e quattro orchestrate (inclusi Unicode, caratteri XML e nome vuoto), poi dodici orchestrazioni concorrenti.
+The example receives a name, invokes the participant in the other container, and returns `Hello, <name>!`. The document/literal schema has a qualified wrapper element and an unqualified `name` parameter. Tests check both WSDLs, four direct calls, four orchestrated cases (including Unicode, XML characters, and an empty name), and twelve concurrent orchestrations. Earlier revisions returned `Ciao, <name>!`; rebuild the participant image after updating this checkout.
 
-## Lavorare in Eclipse
+## Working in Eclipse
 
-Il progetto `HelloProcess` viene importato e `HelloProcess.bpel` aperto automaticamente. Il plugin incluso in `docker/eclipse-startup/` scrive `/workspace/.metadata/bpel-editor-check.ok` solo dopo l'apertura nell'editor BPEL, la verifica delle attività grafiche e la selezione con vista Properties disponibile. In caso di errore registra lo stack trace e la healthcheck fallisce.
+`HelloProcess` is imported and `HelloProcess.bpel` opens automatically. The startup plugin in `docker/eclipse-startup/` writes `/workspace/.metadata/bpel-editor-check.ok` only after opening the BPEL editor, checking graphical activities, and selecting them with the Properties view available. An error records a stack trace and fails the healthcheck.
 
-1. Aprire il desktop nel browser e verificare che compaia il diagramma, non il solo testo XML.
-2. Selezionare Receive, CallParticipant e Reply e verificarne le proprietà.
-3. Modificare e salvare il processo: `/project` corrisponde alla cartella locale.
-4. Per Java: **File → Import → Maven → Existing Maven Projects**, root `/project/services`.
+1. Open the browser desktop and check that a diagram appears, rather than just XML text.
+2. Select Receive, CallParticipant, and Reply and inspect their properties.
+3. Edit and save: `/project` maps to the local repository directory.
+4. For Java, choose **File → Import → Maven → Existing Maven Projects**, with `/project/services` as the root.
 
-Per nuovi processi: **File → New → Other → BPEL → BPEL Project**, posizione sotto `/project/processes`, con `deploy.xml`, BPEL, WSDL ed eventuali XSD. L'esempio viene importato come progetto di risorse e aperto esplicitamente con l'editor BPEL; non dichiara un nature inesistente. Il deploy è gestito dagli script, non dall'adapter Eclipse.
+For new processes, choose **File → New → Other → BPEL → BPEL Project**, under `/project/processes`, and include `deploy.xml`, BPEL, WSDL, and any XSD files. The example is imported as a resource project and explicitly opened with the BPEL editor; it does not declare a nonexistent project nature. Scripts handle deployment rather than the Eclipse server adapter. See the [tutorial](docs/TUTORIAL.md) for a complete second process.
 
-Su Linux il desktop usa UID/GID 1000: la cartella montata deve essere scrivibile dall'utente. Il container non cambia la proprietà dei sorgenti dell'host.
+On Linux, the desktop uses UID/GID 1000: the mounted directory must be writable by that user. The container does not change ownership of host sources.
 
-## Deploy e modifiche
+## Build and deploy
 
-Dopo una modifica BPEL:
+After changing BPEL, WSDL, XSD, or the deployment descriptor:
 
 ```bash
 bash scripts/docker.sh deploy
 bash scripts/docker.sh test
 ```
 
-Il deploy riavvia ODE e copia uno snapshot di ogni cartella contenente `deploy.xml`. Riscrive gli endpoint localhost usando il DNS Compose **solo nella copia dentro ODE**, preservando i sorgenti. Per processi aggiuntivi aggiungere test specifici: quelli inclusi verificano HelloProcess.
+Deployment restarts ODE and copies a snapshot of each immediate subdirectory of `processes/` containing `deploy.xml`. It rewrites the exact `http://localhost:8081/` and `http://localhost:8080/` prefixes to Compose DNS names **in the deployed WSDL copies only**. Host sources are preserved. Included tests cover HelloProcess; add specific tests for additional processes. Deployment does not remove old deployment directories or stale files when you delete or rename sources.
 
-Dopo una modifica Java:
+After changing Java or the participant's deployment descriptors:
 
 ```bash
 docker compose up -d --build --wait --wait-timeout 600 participants
 bash scripts/docker.sh test
 ```
 
-Per modifiche alle immagini o al plugin di avvio rieseguire `bash scripts/docker.sh up`. Non effettuare redeploy durante istanze importanti in esecuzione: il riavvio è una procedura di laboratorio, non un aggiornamento senza interruzioni.
+Maven builds `participants.war` inside Docker and the image installs it on the participant Tomcat. A Java source save alone does not update the running WAR. Re-run `bash scripts/docker.sh up` after changing images or the startup plugin. Avoid redeploying while important instances are running: restarting is a laboratory procedure that interrupts execution.
 
-## Persistenza e arresto
+## Persistence and shutdown
 
-| Dato | Posizione | Persistenza |
+| Data | Location | Persistence |
 |---|---|---|
-| Sorgenti BPEL/Java | Bind mount `/project` e `/processes` | Cartella locale Git |
-| Workspace Eclipse | Volume `eclipse-workspace` | Conservato con stop/down |
-| Database e stato ODE | Volume `ode-state` su `WEB-INF/derby-jpadb` | Conservato con stop/down |
-| Working directory e deploy ODE | Volumi `ode-work` e `ode-processes` | Conservati con stop/down |
-| Log | `docker compose logs` | Esportare prima di rimuovere i container |
+| BPEL/Java sources | Bind mounts `/project` and `/processes` | Local Git directory |
+| Eclipse workspace | `eclipse-workspace` volume | Retained on stop/down |
+| ODE database and state | `ode-state` at `WEB-INF/derby-jpadb` | Retained on stop/down |
+| ODE working directory and deployments | `ode-work` and `ode-processes` volumes | Retained on stop/down |
+| Logs | `docker compose logs` | Export before removing containers |
 
 ```bash
 bash scripts/docker.sh stop
@@ -114,32 +119,52 @@ bash scripts/docker.sh up
 bash scripts/docker.sh down
 ```
 
-`down` conserva i volumi. `docker compose down -v` cancella workspace e stato ODE: usarlo solo per un reset intenzionale. `restart-test` controlla il ritorno all'operatività dopo il riavvio; `recreate-test` ricrea i container conservando i volumi; non verifica il recupero di processi lunghi o di crash del database.
+`down` retains volumes. `docker compose down -v` deletes the workspace and ODE state: use it only for an intentional reset. `restart-test` checks service recovery after restart; `recreate-test` recreates containers while retaining volumes. Neither verifies recovery of long-running processes or database crashes.
 
-## GitHub e criteri di accettazione
+## Validation history
+
+The English-language update and the tutorial were validated locally on November 15, 2026 in an isolated Docker Compose project. The tutorial snippets produced a second JAX-WS endpoint and BPEL deployment. Maven packaging and ODE deployment passed; both the original and tutorial examples passed two WSDL checks, four direct SOAP calls, four orchestrated cases, and twelve concurrent orchestrations each, using the English response. XML/shell syntax and the namespace-preserving deployment checks also passed. This update did not repeat the Eclipse browser, restart, or recreation checks.
+
+The previous native pipeline passed its SOAP test on November 14, 2026: [run 43640763523](https://github.com/massimotivoli-oss/BPELDesigner/actions/runs/43640763523). That result applies to the earlier configuration and does not validate Docker or Eclipse.
+
+Local Docker validation passed on an Apple Silicon Mac on November 14, 2026: build, three healthy services, and exit code 0 for `test`, `restart-test`, and `recreate-test`. Each test checks two WSDLs, four direct SOAP calls, four orchestrated cases, and twelve concurrent orchestrations. Eclipse opened the actual BPEL editor, checked graphical activities, and selected them with Properties available. Diagram and Reply-property screenshots were inspected; noVNC responded HTTP 200 from the Mac. Local evidence is in the untracked `artifacts/` directory.
+
+The session's browser-control tool was unavailable: the noVNC browser workflow on the Mac, including editing and saving, was not manually tested. Graphical verification combined an SWT workbench check with screenshot inspection. The [Docker pipeline for commit `6b6233a`](https://github.com/massimotivoli-oss/BPELDesigner/actions/runs/43647197856) passed a clean Linux amd64 build, editor/property checks, SOAP, restart, and recreation with retained volumes. CI evidence is in that run's `docker-test-evidence` artifact. These historical results predate the English greeting introduced with this documentation update.
+
+Compatibility fixes include an Eclipse process healthcheck compatible with Rosetta, the missing Xalan serializer in the ODE WAR, BPEL bundles whose WSDL4J constraints rejected Photon's version qualifier, and an SWT stall during GTK printer discovery. `docker/patch-eclipse.py` aligns eight BPEL bundles with WSDL4J `[1.6.2,1.7.0)` and removes signatures only from modified JARs. These are local derivatives of the original plugins, not unmodified Eclipse distributions. SWT printing is disabled in the virtual desktop to avoid printer-discovery stalls.
+
+The workflow checks build, actual BPEL editor startup, SOAP, restart, and recreation, saving logs and screenshots even on failure. A passing run validates this configuration; it is not a general production-readiness certification. Mac visual and performance checks remain necessary, especially under emulation.
+
+## GitHub and acceptance criteria
 
 Repository: [massimotivoli-oss/BPELDesigner](https://github.com/massimotivoli-oss/BPELDesigner).
 
+For a student contribution, review and commit only the files relevant to your exercise, then push your branch:
+
 ```bash
-git add .
-git commit -m "Add Docker desktop, Eclipse BPEL and orchestration checks"
-git push
+git switch -c exercise/my-service
+# Edit, deploy, and test your changes first.
+git status --short
+git add services/src processes docs README.md
+git commit -m "Add a SOAP service and BPEL orchestration"
+git push -u origin HEAD
 gh run list --limit 3
 ```
 
-La pipeline costruisce tutte le immagini su Linux amd64, apre l'editor con Xvfb, controlla SOAP, riavvia e ripete i test. Salva log e screenshot anche in caso di errore. Il risultato CI non sostituisce il controllo visivo e delle prestazioni sul Mac Apple Silicon.
+Use your own fork if you do not have write access to the course repository. The pipeline builds on Linux amd64, opens the editor with Xvfb, checks SOAP, restarts, and repeats the tests. It saves logs and screenshots on failure as well. CI does not replace visual and performance checks on Apple Silicon.
 
-Per considerare collaudata la configurazione servono: build senza errori; tre servizi healthy; `test`, `restart-test` e `recreate-test` con exit code 0; diagramma e proprietà funzionanti nel browser del Mac; workflow verde sul commit contenente i container. Conservare le evidenze del commit verificato. Non versionare credenziali, binari, database, workspace o log. Nessuna licenza open source del progetto viene presunta; i componenti mantengono le proprie licenze.
+Acceptance requires a successful build, three healthy services, exit code 0 from all three test commands, a working diagram and Properties view in the Mac browser, and a green workflow for the container commit. Retain evidence for the verified commit. Do not commit credentials, binaries, databases, workspaces, or logs. No open-source license for this project is assumed; dependencies retain their own licenses.
 
-## Script nativi precedenti
+## Earlier native scripts
 
-`setup.sh`, `start.sh`, `deploy.sh`, `smoke.sh`, `stop.sh` ed `eclipse.sh` restano disponibili per il percorso senza Docker, con JDK 8 locale. Non servono nel percorso Docker e non vanno eseguiti contemporaneamente ai container, perché occupano le stesse porte.
+`setup.sh`, `start.sh`, `deploy.sh`, `smoke.sh`, `stop.sh`, and `eclipse.sh` remain available for the non-Docker path with a local JDK 8. They are unnecessary for the Docker workflow and must not run alongside the containers because they use the same ports. In particular, native `scripts/deploy.sh` only copies HelloProcess; use `scripts/docker.sh deploy` for the multi-process Docker workflow.
 
-## Fonti ufficiali
+## Official references
 
 - [Eclipse BPEL Designer](https://projects.eclipse.org/projects/soa.bpel)
-- [Repository Photon fissato](https://download.eclipse.org/releases/photon/201806271001/)
-- [Archivio Eclipse Photon](https://archive.eclipse.org/technology/epp/downloads/release/photon/R/)
+- [Pinned Photon repository](https://download.eclipse.org/releases/photon/201806271001/)
+- [Eclipse Photon archive](https://archive.eclipse.org/technology/epp/downloads/release/photon/R/)
 - [ODE WAR deployment](https://ode.apache.org/war-deployment.html)
-- [Archivio ODE](https://archive.apache.org/dist/ode/)
-- [Archivio Tomcat](https://archive.apache.org/dist/tomcat/tomcat-8/v8.5.100/)
+- [ODE archive](https://archive.apache.org/dist/ode/)
+- [Tomcat archive](https://archive.apache.org/dist/tomcat/tomcat-8/v8.5.100/)
+- [Metro documentation, including the 2.3.x guides used by this project](https://eclipse-ee4j.github.io/metro-jax-ws/)
