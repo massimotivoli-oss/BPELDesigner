@@ -3,6 +3,7 @@
     xmlns="http://docs.oasis-open.org/wsbpel/2.0/process/executable"
     xmlns:tns="urn:orchestrator"
     xmlns:h="urn:hello"
+    xmlns:a="urn:helloArtifacts"
     name="HelloProcess"
     targetNamespace="urn:orchestrator"
     suppressJoinFailure="yes">
@@ -10,8 +11,15 @@
         namespace="urn:hello"
         location="Hello.wsdl"
         importType="http://schemas.xmlsoap.org/wsdl/"/>
+    <import
+        namespace="urn:helloArtifacts"
+        location="HelloProcessArtifacts.wsdl"
+        importType="http://schemas.xmlsoap.org/wsdl/"/>
     <partnerLinks>
-        <partnerLink name="client" partnerLinkType="h:HelloLink" myRole="provider"/>
+        <partnerLink
+            name="client"
+            partnerLinkType="a:HelloPortTypePLT"
+            myRole="HelloPortTypeRole"/>
         <partnerLink name="participant" partnerLinkType="h:HelloLink" partnerRole="provider"/>
     </partnerLinks>
     <variables>

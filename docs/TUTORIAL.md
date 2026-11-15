@@ -17,6 +17,7 @@ The supplied HelloProcess is already a BPEL 2.0 project with the same `bpelConte
 | `services/src/main/webapp/WEB-INF/web.xml` | Servlet registration and URL mapping |
 | `services/pom.xml` | Java 8, Metro 2.3.7, and WAR build |
 | `processes/HelloProcess/bpelContent/Hello.wsdl` | Messages, port type, SOAP binding, services, and partner-link type |
+| `processes/HelloProcess/bpelContent/HelloProcessArtifacts.wsdl` | Wizard-style client partner-link type and role, importing Hello.wsdl |
 | `processes/HelloProcess/bpelContent/HelloProcess.bpel` | Receive → Invoke → Reply |
 | `processes/HelloProcess/deploy.xml` | ODE mapping between BPEL partner links and WSDL service/port names |
 

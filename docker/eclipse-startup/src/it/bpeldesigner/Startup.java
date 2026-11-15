@@ -59,7 +59,8 @@ public class Startup implements IStartup {
                     .loadClass("org.eclipse.bpel.apache.ode.deploy.ui.util.DeployUtils");
                 java.util.List<?> projectFiles = (java.util.List<?>) deployUtils
                     .getMethod("getAllFilesInProject", IProject.class).invoke(null, project);
-                if (!projectFiles.contains(project.getFile("bpelContent/Hello.wsdl"))) {
+                if (!projectFiles.contains(project.getFile("bpelContent/Hello.wsdl"))
+                        || !projectFiles.contains(project.getFile("bpelContent/HelloProcessArtifacts.wsdl"))) {
                     throw new IllegalStateException("ODE descriptor editor cannot discover BPEL content-folder WSDL");
                 }
                 IEditorPart deployment = IDE.openEditor(page, project.getFile("deploy.xml"),
@@ -95,7 +96,7 @@ public class Startup implements IStartup {
                         throw new IllegalStateException("Selection/properties unavailable: " + activity.getName());
                 }
                 Files.write(Paths.get("/workspace/.metadata/bpel-editor-check.ok"),
-                    ("PASS: " + editor.getClass().getName() + " opened bpelContent/HelloProcess.bpel; BPEL 2.0 facet, content mapping, graphical activities, properties and ODE deployment descriptor checked\n").getBytes("UTF-8"));
+                    ("PASS: " + editor.getClass().getName() + " opened bpelContent/HelloProcess.bpel; BPEL 2.0 facet, artifacts WSDL, content mapping, graphical activities, properties and ODE deployment descriptor checked\n").getBytes("UTF-8"));
             } catch (Throwable error) {
                 error.printStackTrace();
                 try (PrintWriter out = new PrintWriter("/workspace/.metadata/bpel-editor-check.error", "UTF-8")) {

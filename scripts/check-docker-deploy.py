@@ -27,8 +27,12 @@ with tempfile.TemporaryDirectory(prefix='bpeldesigner-deploy-') as directory:
     addresses = {node.get('location') for node in E.parse(deployed).findall(
         './/{http://schemas.xmlsoap.org/wsdl/soap/}address')}
     assert addresses == {'http://participants:8081/participants/hello', 'http://ode:8080/ode/processes/Orchestrator'}
-    for name in ['bpelContent/HelloProcess.bpel', 'deploy.xml']:
+    for name in ['bpelContent/HelloProcess.bpel', 'bpelContent/HelloProcessArtifacts.wsdl', 'deploy.xml']:
         assert (target / 'HelloProcess' / name).read_bytes() == (original.parent.parent / name).read_bytes()
+    artifact_ns = {prefix: uri for _, (prefix, uri) in E.iterparse(
+        target / 'HelloProcess/bpelContent/HelloProcessArtifacts.wsdl', events=['start-ns'])}
+    # Keep declarations referenced by QName-valued attributes in the artifacts WSDL too.
+    assert artifact_ns['h'] == 'urn:hello'
     assert not (target / 'HelloProcess/.settings').exists(), 'IDE metadata was deployed'
     for name in ['HelloProcess.bpel', 'Hello.wsdl', 'HelloProcess.cbp']:
         assert not (legacy / name).exists(), 'Obsolete root process survived migration'

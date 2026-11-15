@@ -28,3 +28,17 @@ component = E.parse(project / '.settings/org.eclipse.wst.common.component')
 assert component.find("wb-module/wb-resource[@source-path='/bpelContent'][@deploy-path='/']") is not None
 assert (project / 'deploy.xml').is_file()
 print('PASS: HelloProcess BPEL 2.0 facet, builder, content mapping and root deployment descriptor')
+
+artifacts = E.parse(project / 'bpelContent/HelloProcessArtifacts.wsdl')
+assert artifacts.getroot().get('targetNamespace') == 'urn:helloArtifacts'
+assert artifacts.find("w:import[@namespace='urn:hello'][@location='Hello.wsdl']", ns) is not None
+link_ns = {'p': 'http://docs.oasis-open.org/wsbpel/2.0/plnktype'}
+link = artifacts.find("p:partnerLinkType[@name='HelloPortTypePLT']", link_ns)
+assert link is not None
+role = link.find("p:role[@name='HelloPortTypeRole']", link_ns)
+assert role is not None and role.get('portType') == 'h:HelloPortType'
+assert b.find("b:import[@namespace='urn:helloArtifacts'][@location='HelloProcessArtifacts.wsdl']", ns) is not None
+client = b.find("b:partnerLinks/b:partnerLink[@name='client']", ns)
+assert client.get('partnerLinkType') == 'a:HelloPortTypePLT'
+assert client.get('myRole') == 'HelloPortTypeRole'
+print('PASS: wizard-style artifacts WSDL import, client partner-link type and role')

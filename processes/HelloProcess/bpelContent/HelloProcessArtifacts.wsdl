@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions
+    xmlns="http://schemas.xmlsoap.org/wsdl/"
+    xmlns:h="urn:hello"
+    xmlns:plnk="http://docs.oasis-open.org/wsbpel/2.0/plnktype"
+    targetNamespace="urn:helloArtifacts">
+    <import namespace="urn:hello" location="Hello.wsdl"/>
+    <plnk:partnerLinkType name="HelloPortTypePLT">
+        <plnk:role name="HelloPortTypeRole" portType="h:HelloPortType"/>
+    </plnk:partnerLinkType>
+</definitions>
