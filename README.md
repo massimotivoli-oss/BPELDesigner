@@ -81,6 +81,8 @@ The example receives a name, invokes the participant in the other container, and
 
 For new processes, choose **File → New → Other → BPEL 2.0 → BPEL Project**, under `/project/processes`. Keep the default `bpelContent` folder for BPEL, WSDL, and any XSD files, and place `deploy.xml` in the project root for discovery by the Docker deployment script. The bundled HelloProcess is also a faceted BPEL 2.0 project: `.project` registers the WTP natures and BPEL validation builder, `.settings` declares the facet and content mapping, and `bpelContent` holds its BPEL/WSDL files. `HelloProcessArtifacts.wsdl` defines the client partner-link type using the naming convention of the service-description wizard; `Hello.wsdl` retains the service contracts and participant partner-link type. Scripts handle deployment rather than the Eclipse server adapter. See the [tutorial](docs/TUTORIAL.md) for a complete second process.
 
+The virtual desktop uses a solid background set by Fluxbox's bundled `fbsetroot`, so no optional wallpaper application is required. An older image may show an `fbsetbg` warning in an `xmessage` window; that cosmetic desktop warning does not affect Eclipse or SOAP services. Rebuild/recreate `ide` after saving your files to apply the background configuration.
+
 On Linux, the desktop uses UID/GID 1000: the mounted directory must be writable by that user. The container does not change ownership of host sources.
 
 ## Build and deploy
